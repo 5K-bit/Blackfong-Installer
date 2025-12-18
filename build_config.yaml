@@ -14,10 +14,12 @@ offline_repo:
   # The offline repo is mounted/copied into the live env at this path:
   live_path: /opt/blackfong/apt-repo
   trusted: true
+  suite: bookworm
+  component: main
 
 # Debian bootstrap settings for the *live environment*
 debian:
-  suite: stable
+  suite: bookworm
   mirror: http://deb.debian.org/debian
 
 # Per-arch defaults for the live environment

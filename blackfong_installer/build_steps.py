@@ -10,6 +10,7 @@ from typing import Any, Dict, Sequence
 from .build_config import BuildConfig
 from .build_state import is_completed, mark_completed
 from .lib.assets import copy_tree
+from .lib.apt_repo import build_file_repo_from_debs
 from .lib.command import run_cmd
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,30 @@ def step_02_copy_blackfong_assets(*, ctx: BuildCtx, state: Dict[str, Any], force
     copy_tree(str(repo_root / "assets/systemd"), str(rootfs / "etc/systemd/system"), dry_run=ctx.dry_run)
     copy_tree(str(repo_root / "assets/udev"), str(rootfs / "etc/udev/rules.d"), dry_run=ctx.dry_run)
 
+    # Mark as live environment and enable the live installer service
+    if not ctx.dry_run:
+        (rootfs / "etc/blackfong-live").parent.mkdir(parents=True, exist_ok=True)
+        (rootfs / "etc/blackfong-live").write_text("1\n", encoding="utf-8")
+
+    run_cmd(["mount", "--bind", "/dev", str(rootfs / "dev")], dry_run=ctx.dry_run)
+    run_cmd(["mount", "--bind", "/proc", str(rootfs / "proc")], dry_run=ctx.dry_run)
+    run_cmd(["mount", "--bind", "/sys", str(rootfs / "sys")], dry_run=ctx.dry_run)
+    try:
+        run_cmd(
+            [
+                "chroot",
+                str(rootfs),
+                "systemctl",
+                "enable",
+                "blackfong-installer-live.service",
+            ],
+            dry_run=ctx.dry_run,
+        )
+    finally:
+        run_cmd(["umount", "-lf", str(rootfs / "sys")], check=False, dry_run=ctx.dry_run)
+        run_cmd(["umount", "-lf", str(rootfs / "proc")], check=False, dry_run=ctx.dry_run)
+        run_cmd(["umount", "-lf", str(rootfs / "dev")], check=False, dry_run=ctx.dry_run)
+
     mark_completed(state, target=ctx.target, step_id=step_id)
 
 
@@ -190,18 +215,43 @@ def step_04_integrate_offline_repo(*, ctx: BuildCtx, state: Dict[str, Any], forc
         return
 
     rootfs = ctx.rootfs_dir
-    offline_repo_src = Path(ctx.cfg.offline_repo_path)
-    offline_repo_dst = rootfs / ctx.cfg.offline_repo_live_path.lstrip("/")
 
+    # Build a structured APT repo from a flat folder of .deb files.
+    built_repo = ctx.work_target_dir / "apt-repo-built"
+    if built_repo.exists() and force and not ctx.dry_run:
+        run_cmd(["rm", "-rf", str(built_repo)], dry_run=ctx.dry_run)
+
+    build_file_repo_from_debs(
+        debs_dir=ctx.cfg.offline_repo_path,
+        out_repo_dir=str(built_repo),
+        suite=ctx.cfg.offline_repo_suite,
+        component=ctx.cfg.offline_repo_component,
+        arch=ctx.target,
+        dry_run=ctx.dry_run,
+    )
+
+    if ctx.dry_run:
+        logger.info(
+            "[%s] would copy built repo -> %s and write blackfong.list",
+            ctx.target,
+            str(rootfs / ctx.cfg.offline_repo_live_path.lstrip("/")),
+        )
+        mark_completed(state, target=ctx.target, step_id=step_id)
+        return
+
+    # Copy built repo into the live rootfs
+    offline_repo_dst = rootfs / ctx.cfg.offline_repo_live_path.lstrip("/")
     if offline_repo_dst.exists() and force and not ctx.dry_run:
         run_cmd(["rm", "-rf", str(offline_repo_dst)], dry_run=ctx.dry_run)
-
-    copy_tree(str(offline_repo_src), str(offline_repo_dst), dry_run=ctx.dry_run)
+    copy_tree(str(built_repo), str(offline_repo_dst), dry_run=ctx.dry_run)
 
     # Configure apt in live rootfs
     list_dir = rootfs / "etc/apt/sources.list.d"
     list_dir.mkdir(parents=True, exist_ok=True)
-    line = f"deb [trusted=yes] file:{ctx.cfg.offline_repo_live_path} ./\n"
+    line = (
+        f"deb [trusted=yes] file:{ctx.cfg.offline_repo_live_path} "
+        f"{ctx.cfg.offline_repo_suite} {ctx.cfg.offline_repo_component}\n"
+    )
     if not ctx.dry_run:
         (list_dir / "blackfong.list").write_text(line, encoding="utf-8")
 
@@ -259,6 +309,7 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
             run_cmd(["rm", "-rf", str(iso_dir)], dry_run=ctx.dry_run)
         (iso_dir / "live").mkdir(parents=True, exist_ok=True)
         (iso_dir / "boot").mkdir(parents=True, exist_ok=True)
+        (iso_dir / "boot/grub").mkdir(parents=True, exist_ok=True)
 
         squash = iso_dir / "live/filesystem.squashfs"
         run_cmd(["mksquashfs", str(rootfs), str(squash), "-e", "boot"], dry_run=ctx.dry_run)
@@ -270,6 +321,19 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
         if not ctx.dry_run:
             run_cmd(["cp", "-a", str(vmlinuz), str(iso_dir / "live/vmlinuz")], dry_run=ctx.dry_run)
             run_cmd(["cp", "-a", str(initrd), str(iso_dir / "live/initrd")], dry_run=ctx.dry_run)
+
+        # GRUB config for ISO (boot=live uses live-boot inside the squashfs)
+        grub_cfg = (
+            "set default=0\n"
+            "set timeout=5\n\n"
+            "menuentry 'Blackfong Installer (Live)' {\n"
+            "  search --set=root --file /live/filesystem.squashfs\n"
+            "  linux /live/vmlinuz boot=live live-media-path=/live quiet\n"
+            "  initrd /live/initrd\n"
+            "}\n"
+        )
+        if not ctx.dry_run:
+            (iso_dir / "boot/grub/grub.cfg").write_text(grub_cfg, encoding="utf-8")
 
         # Build ISO using grub-mkrescue (requires grub tooling + xorriso)
         iso_path = Path((ctx.cfg.raw.get("outputs") or {}).get("amd64_iso") or "output/blackfong-installer-amd64.iso")

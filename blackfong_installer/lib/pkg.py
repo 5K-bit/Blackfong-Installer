@@ -45,13 +45,19 @@ def apt_install(target_root: str, packages: Sequence[str], *, dry_run: bool = Fa
     )
 
 
-def write_sources_list_offline(target_root: str, repo_path: str) -> None:
+def write_sources_list_offline(
+    target_root: str,
+    repo_path: str,
+    *,
+    suite: str = "bookworm",
+    component: str = "main",
+) -> None:
     """Configure apt to use an on-media repo (file://).
 
     repo_path must be a path accessible in the live environment and mounted or copied into target.
     """
 
-    p = Path(target_root) / "etc/apt/sources.list"
+    p = Path(target_root) / "etc/apt/sources.list.d/blackfong-offline.list"
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(f"deb [trusted=yes] file:{repo_path} ./\n", encoding="utf-8")
-    logger.info("Configured offline apt repo: %s", repo_path)
+    p.write_text(f"deb [trusted=yes] file:{repo_path} {suite} {component}\n", encoding="utf-8")
+    logger.info("Configured offline apt repo: %s (%s %s)", repo_path, suite, component)

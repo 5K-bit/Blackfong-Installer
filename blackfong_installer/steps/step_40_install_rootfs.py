@@ -36,7 +36,12 @@ class InstallRootFSStep:
         # Offline-first: if caller provides an on-media repo path, prefer it.
         offline_repo = cfg.get("offline_repo_path")
         if offline_repo:
-            write_sources_list_offline(target_root, offline_repo)
+            write_sources_list_offline(
+                target_root,
+                offline_repo,
+                suite=str(cfg.get("offline_repo_suite", "bookworm")),
+                component=str(cfg.get("offline_repo_component", "main")),
+            )
 
         mount_chroot_binds(target_root, dry_run=dry_run)
         try:

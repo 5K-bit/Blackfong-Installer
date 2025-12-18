@@ -1,0 +1,51 @@
+2025-12-18T10:21:07+0000 INFO blackfong_installer.logging_utils: Logging initialized (requested=logs/blackfong-build.log, actual=logs/blackfong-build.log)
+2025-12-18T10:21:07+0000 INFO __main__: === Build target: amd64 ===
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD debootstrap --arch amd64 bookworm build/work/amd64/rootfs http://deb.debian.org/debian
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /dev build/work/amd64/rootfs/dev
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /proc build/work/amd64/rootfs/proc
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /sys build/work/amd64/rootfs/sys
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs apt-get update
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs apt-get install -y --no-install-recommends bash coreutils systemd iproute2 iputils-ping ca-certificates
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/sys
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/proc
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/dev
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.assets: Would copy tree /workspace -> build/work/amd64/rootfs/opt/blackfong/installer
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.assets: Would copy tree /workspace/assets/systemd -> build/work/amd64/rootfs/etc/systemd/system
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.assets: Would copy tree /workspace/assets/udev -> build/work/amd64/rootfs/etc/udev/rules.d
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /dev build/work/amd64/rootfs/dev
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /proc build/work/amd64/rootfs/proc
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /sys build/work/amd64/rootfs/sys
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs systemctl enable blackfong-installer-live.service
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/sys
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/proc
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/dev
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /dev build/work/amd64/rootfs/dev
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /proc build/work/amd64/rootfs/proc
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD mount --bind /sys build/work/amd64/rootfs/sys
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs apt-get update
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs apt-get install -y --no-install-recommends linux-image-amd64 initramfs-tools live-boot grub-efi-amd64 efibootmgr squashfs-tools xorriso
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/sys
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/proc
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/dev
+2025-12-18T10:21:07+0000 WARNING blackfong_installer.lib.apt_repo: No .deb files found under assets/apt-repo
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD dpkg-scanpackages -m pool/main /dev/null
+2025-12-18T10:21:07+0000 INFO blackfong_installer.lib.command: CMD apt-ftparchive release dists/bookworm
+2025-12-18T10:21:58+0000 INFO blackfong_installer.logging_utils: Logging initialized (requested=logs/blackfong-build.log, actual=logs/blackfong-build.log)
+2025-12-18T10:21:58+0000 INFO __main__: === Build target: amd64 ===
+2025-12-18T10:21:58+0000 INFO blackfong_installer.build_steps: [amd64] skip 00_initialize
+2025-12-18T10:21:58+0000 INFO blackfong_installer.build_steps: [amd64] skip 01_prepare_live_rootfs
+2025-12-18T10:21:58+0000 INFO blackfong_installer.build_steps: [amd64] skip 02_copy_blackfong_assets
+2025-12-18T10:21:58+0000 INFO blackfong_installer.build_steps: [amd64] skip 03_configure_boot
+2025-12-18T10:21:58+0000 WARNING blackfong_installer.lib.apt_repo: No .deb files found under assets/apt-repo
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD dpkg-scanpackages -m pool/main /dev/null
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD apt-ftparchive release dists/bookworm
+2025-12-18T10:21:58+0000 INFO blackfong_installer.build_steps: [amd64] would copy built repo -> build/work/amd64/rootfs/opt/blackfong/apt-repo and write blackfong.list
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD mount --bind /dev build/work/amd64/rootfs/dev
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD mount --bind /proc build/work/amd64/rootfs/proc
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD mount --bind /sys build/work/amd64/rootfs/sys
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs apt-get update
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD chroot build/work/amd64/rootfs apt-get install -y --no-install-recommends network-manager wget
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/sys
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/proc
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD umount -lf build/work/amd64/rootfs/dev
+2025-12-18T10:21:58+0000 INFO blackfong_installer.lib.command: CMD mksquashfs build/work/amd64/rootfs build/work/amd64/iso/live/filesystem.squashfs -e boot

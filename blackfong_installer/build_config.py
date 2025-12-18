@@ -30,6 +30,14 @@ class BuildConfig:
         return str(((self.raw.get("offline_repo") or {}).get("live_path")) or "/opt/blackfong/apt-repo")
 
     @property
+    def offline_repo_suite(self) -> str:
+        return str(((self.raw.get("offline_repo") or {}).get("suite")) or self.debian_suite)
+
+    @property
+    def offline_repo_component(self) -> str:
+        return str(((self.raw.get("offline_repo") or {}).get("component")) or "main")
+
+    @property
     def debian_suite(self) -> str:
         return str(((self.raw.get("debian") or {}).get("suite")) or "stable")
 
