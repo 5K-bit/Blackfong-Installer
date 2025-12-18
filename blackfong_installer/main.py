@@ -11,11 +11,14 @@ from .steps import (
     ConfigureServicesStep,
     DetectHardwareStep,
     FinalizeRebootStep,
+    ApplyAssetsStep,
     InstallDesktopStep,
     InstallFeaturesStep,
+    InstallBootloaderStep,
     InstallKernelStep,
     InstallRootFSStep,
     PartitionFilesystemStep,
+    WriteFstabStep,
     PostInstallChecksStep,
 )
 
@@ -29,9 +32,12 @@ def build_steps():
     return [
         DetectHardwareStep(),
         PartitionFilesystemStep(),
-        InstallKernelStep(),
+        WriteFstabStep(),
         InstallRootFSStep(),
+        InstallKernelStep(),
+        InstallBootloaderStep(),
         ConfigureServicesStep(),
+        ApplyAssetsStep(),
         InstallDesktopStep(),
         InstallFeaturesStep(),
         PostInstallChecksStep(),

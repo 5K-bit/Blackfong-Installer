@@ -1,0 +1,6 @@
+# Allow system-wide DAISE access to common device classes.
+# Fine-tune per device class as hardware support matures.
+
+SUBSYSTEM=="video4linux", MODE="0660", GROUP="video"
+SUBSYSTEM=="sound", MODE="0660", GROUP="audio"
+SUBSYSTEM=="input", MODE="0660", GROUP="input"

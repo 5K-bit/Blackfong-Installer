@@ -277,3 +277,30 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
 - GUI installer is optional; fall back to text-only when graphics are unavailable.
 - System-wide DAISE is always installed; no multi-user support.
 - Hardware features auto-enable only when detected; firewall and device-permission toggles are user-selectable.
+
+---
+
+## 10. Project Automation (Build + Run)
+
+### Run the installer pipeline (in a live environment)
+This project is designed to run from a privileged live environment (installer media) and install onto a target disk.
+
+- **CLI entrypoint**:
+  - `python3 -m blackfong_installer --state /var/lib/blackfong-installer/state.json`
+- **Key config fields** (in `state['config']`):
+  - `target_disk`: required (e.g. `/dev/nvme0n1`, `/dev/sda`, `/dev/mmcblk0`)
+  - `install_source`: `offline|online|hybrid`
+  - `firewall_enabled`: default `true`
+  - `daise_device_access_enabled`: default `true`
+  - `dry_run`: `true` logs and plans without destructive commands
+
+### Build installer media artifacts (project automation)
+Build scripts live under `scripts/`:
+- `scripts/build_installer_media_amd64_efi.sh`
+- `scripts/build_installer_media_arm64_img.sh`
+- `scripts/build_installer_media_armhf_img.sh`
+
+These scripts document required build dependencies and the remaining assembly steps for generating:
+- `blackfong-installer-amd64.iso`
+- `blackfong-installer-arm64.img`
+- `blackfong-installer-armhf.img` (experimental)
