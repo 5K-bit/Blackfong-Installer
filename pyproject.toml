@@ -7,13 +7,13 @@ readme = "README.md"
 license = {text = "Proprietary"}
 
 dependencies = [
-  # Optional: YAML state support if installed in the live env
-  # "PyYAML>=6.0.2",
+  "PyYAML>=6.0.2",
 ]
 
 [project.scripts]
 blackfong-installer = "blackfong_installer.main:main"
 blackfong-installer-cli = "ui.cli:main"
+blackfong-build = "blackfong_installer.build:main"
 
 [tool.black]
 line-length = 100

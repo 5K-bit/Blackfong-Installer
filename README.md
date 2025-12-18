@@ -304,3 +304,17 @@ These scripts document required build dependencies and the remaining assembly st
 - `blackfong-installer-amd64.iso`
 - `blackfong-installer-arm64.img`
 - `blackfong-installer-armhf.img` (experimental)
+
+### Build pipeline (state-driven, resumable)
+The media builder is implemented as a Python pipeline driven by `build_config.yaml` and tracked in `build/build_state.json`.
+
+- **Config**: `build_config.yaml`
+- **State**: `build/build_state.json`
+- **Build command**:
+  - `python3 -m blackfong_installer.build --config build_config.yaml`
+  - Or, for a single target: `python3 -m blackfong_installer.build --target amd64`
+- **Dry-run**:
+  - `python3 -m blackfong_installer.build --dry-run`
+
+The pipeline mirrors these steps:
+`00_initialize → 01_prepare_live_rootfs → 02_copy_blackfong_assets → 03_configure_boot → 04_integrate_offline_repo → 05_optional_network_config → 06_create_artifact → 07_verify → 08_package_outputs`

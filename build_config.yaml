@@ -1,0 +1,49 @@
+# Blackfong installer media build configuration
+# This file is read by the build pipeline (blackfong-build).
+
+version: vNext-1.0
+
+targets:
+  - amd64
+  - arm64
+  - armhf
+
+# Offline apt repo shipped on the media.
+offline_repo:
+  path: assets/apt-repo
+  # The offline repo is mounted/copied into the live env at this path:
+  live_path: /opt/blackfong/apt-repo
+  trusted: true
+
+# Debian bootstrap settings for the *live environment*
+debian:
+  suite: stable
+  mirror: http://deb.debian.org/debian
+
+# Per-arch defaults for the live environment
+arch:
+  amd64:
+    kernel_package: linux-image-amd64
+    extra_packages:
+      - live-boot
+      - grub-efi-amd64
+      - efibootmgr
+      - squashfs-tools
+      - xorriso
+  arm64:
+    kernel_package: linux-image-arm64
+    extra_packages: []
+  armhf:
+    kernel_package: linux-image-armhf
+    extra_packages: []
+
+# Output artifact names
+outputs:
+  amd64_iso: output/blackfong-installer-amd64.iso
+  arm64_img: output/blackfong-installer-arm64.img
+  armhf_img: output/blackfong-installer-armhf.img
+
+# Build working directories
+paths:
+  work_dir: build/work
+  logs_dir: logs
