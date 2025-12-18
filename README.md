@@ -151,9 +151,9 @@ Automatically detect and log:
 
 This section defines an implementable structure for a modular installer where **CLI and GUI share the same core pipeline**.
 
-### 8.1 Repository / Media Layout (proposed)
-- **`installer/`**: shared core logic (no UI)
-  - `main.sh` (or `main.py`): entrypoint for the pipeline (used by CLI and GUI)
+### 8.1 Repository / Media Layout (Python-first, proposed)
+- **`blackfong_installer/`**: shared core logic (no UI)
+  - `main.py`: entrypoint for the pipeline (used by CLI and GUI)
   - `lib/`
     - `log.*`: structured logging to `/var/log/blackfong-installer.log`
     - `env.*`: constants, paths, mount points, feature flags
@@ -174,8 +174,8 @@ This section defines an implementable structure for a modular installer where **
     - `80_post_install_checks.*`
     - `90_finalize_reboot.*`
 - **`ui/`**: frontends (thin wrappers)
-  - `cli.*`: TUI prompts + progress + writes a config for the core pipeline
-  - `gui.*`: optional (Wayland/GTK/Qt); calls the same core pipeline APIs
+  - `cli.py`: universal fallback; calls `blackfong_installer.main.run(...)`
+  - `gui_stub.py`: optional (Wayland/GTK/Qt); calls the same core pipeline APIs
 - **`manifests/`**: package manifests + profiles
   - `base.yaml`: always-installed packages/services
   - `desktop.yaml`: BDE compositor + shell + terminal-first tooling

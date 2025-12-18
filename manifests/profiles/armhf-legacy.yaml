@@ -1,0 +1,7 @@
+id: armhf-legacy
+arch: armhf
+firmware: uboot
+packages:
+  - linux-image-armhf
+notes:
+  - "Experimental legacy"

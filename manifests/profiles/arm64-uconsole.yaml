@@ -1,0 +1,5 @@
+id: arm64-uconsole
+arch: arm64
+firmware: uboot
+packages:
+  - linux-image-arm64

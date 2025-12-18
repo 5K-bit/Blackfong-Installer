@@ -1,0 +1,34 @@
+{
+  "config": {
+    "daise_device_access_enabled": true,
+    "firewall_enabled": true,
+    "install_source": "offline",
+    "mode": "cli",
+    "partitioning": "auto",
+    "swap": "auto"
+  },
+  "execution": {
+    "completed_steps": [
+      "10_detect_hardware"
+    ],
+    "current_step": null,
+    "errors": [],
+    "paths": {
+      "log_path_actual": "/workspace/.blackfong-installer.log",
+      "log_path_requested": "/workspace/.blackfong-installer.log"
+    },
+    "summary": {
+      "ran_steps": [
+        "10_detect_hardware"
+      ],
+      "skipped_steps": []
+    }
+  },
+  "hardware": {
+    "arch": "amd64",
+    "cpu_model": "x86_64",
+    "firmware": "efi",
+    "profile": "amd64-pc"
+  },
+  "version": "vNext 1.0"
+}
