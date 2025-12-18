@@ -147,27 +147,125 @@ Automatically detect and log:
 
 ---
 
-## 8. Installer Logic (for Automation / Cursor AI)
+## 8. Installer Logic (Concrete Implementation Plan)
 
-### Core functions
-- **`detect_hardware()`** → returns architecture, RAM, storage, GPU, devices
-- **`partition_disk()`** → auto or manual layout
-- **`install_kernel(arch)`** → selects correct kernel
-- **`install_rootfs()`** → minimal system + Blackfong services
-- **`configure_services()`** → networking, firewall, DAISE, device permissions
-- **`install_desktop()`** → Wayland compositor + BDE shell
-- **`install_features()`** → AI/ML, media, accessories
-- **`post_install_checks()`** → system verification
-- **`log_actions()`** → all steps recorded
+This section defines an implementable structure for a modular installer where **CLI and GUI share the same core pipeline**.
 
-### High-level flow
-`boot_media → detect_hardware → partition_disk → install_kernel → install_rootfs → configure_services → install_desktop → install_features → post_install_checks → reboot`
+### 8.1 Repository / Media Layout (proposed)
+- **`installer/`**: shared core logic (no UI)
+  - `main.sh` (or `main.py`): entrypoint for the pipeline (used by CLI and GUI)
+  - `lib/`
+    - `log.*`: structured logging to `/var/log/blackfong-installer.log`
+    - `env.*`: constants, paths, mount points, feature flags
+    - `hwdetect.*`: probes and normalization into a single hardware profile
+    - `net.*`: network bring-up, connectivity tests, online/offline decision
+    - `storage.*`: disk enumeration, partitioning, formatting, mounting
+    - `pkg.*`: offline repo setup + online mirrors + package install wrapper
+    - `chroot.*`: helpers to run commands inside target rootfs
+  - `steps/` (each step is idempotent; can be resumed)
+    - `00_bootstrap_live.*`
+    - `10_detect_hardware.*`
+    - `20_partition_fs.*`
+    - `30_install_kernel.*`
+    - `40_install_rootfs.*`
+    - `50_configure_services.*`
+    - `60_install_desktop.*`
+    - `70_install_features.*`
+    - `80_post_install_checks.*`
+    - `90_finalize_reboot.*`
+- **`ui/`**: frontends (thin wrappers)
+  - `cli.*`: TUI prompts + progress + writes a config for the core pipeline
+  - `gui.*`: optional (Wayland/GTK/Qt); calls the same core pipeline APIs
+- **`manifests/`**: package manifests + profiles
+  - `base.yaml`: always-installed packages/services
+  - `desktop.yaml`: BDE compositor + shell + terminal-first tooling
+  - `features.yaml`: AI/ML, media, accessories (split into feature groups)
+  - `profiles/`
+    - `arm64-pi.yaml`, `arm64-uconsole.yaml`, `amd64-pc.yaml`, `amd64-steamdeck.yaml`, `armhf-legacy.yaml`
+- **`assets/`**: configs, systemd units, default hotkeys, udev rules, polkit rules
 
-### Conditional branching
-- **Architecture**
-- **Hardware presence**
-- **User installer choices**
-- **Network availability**
+### 8.2 Data Model (single source of truth)
+All steps read/write a single JSON (or YAML) state file that is also logged for reproducibility.
+
+- **Installer config** (user choices):
+  - `mode`: `cli|gui`
+  - `install_source`: `offline|online|hybrid`
+  - `firewall_enabled`: `true|false` (default `true`)
+  - `daise_device_access_enabled`: `true|false` (default `true`)
+  - `partitioning`: `auto|manual`
+  - `target_disk`: `/dev/nvme0n1|/dev/sda|/dev/mmcblk0|...`
+  - `swap`: `none|auto|size_mb`
+  - `hostname`, `locale`, `timezone`, `keyboard_layout`
+
+- **Hardware profile** (detected):
+  - `arch`: `arm64|armhf|amd64`
+  - `firmware`: `uboot|efi`
+  - `cpu_model`, `ram_mb`
+  - `disks[]`: size, type (nvme/sata/mmc), removable flag
+  - `gpu`: vendor/device + driver class (modesetting/amdgpu/nouveau/vc4/…)
+  - `net`: ethernet/wifi devices; wifi chipset hint
+  - `bt`: present yes/no
+  - `audio`, `camera`, `lora`, `haptics`: present yes/no (+ bus: usb/spi/ble)
+
+- **Execution state** (for resume):
+  - `current_step`, `completed_steps[]`
+  - `mounts`: target root mountpoint, EFI/boot mountpoint
+  - `errors[]`: structured error objects with step + command + exit code
+
+### 8.3 Step Responsibilities (what each module must do)
+- **`10_detect_hardware`**:
+  - Produce `hardware_profile` and write it to the state file
+  - Decide a **profile** (e.g. `amd64-steamdeck`) from rules
+  - Log all probe outputs (redact secrets)
+- **`20_partition_fs`**:
+  - Enforce **GPT**; create EFI System Partition for EFI targets
+  - Create root (`/`) ext4; optional swap
+  - Mount target root at a predictable mount point (e.g. `/target`)
+- **`30_install_kernel`**:
+  - Map `arch → kernel package` (`linux-image-arm64|linux-image-armhf|linux-image-amd64`)
+  - Install required firmware/boot tooling based on `firmware` and device profile
+- **`40_install_rootfs`**:
+  - Bootstrap Debian-based minimal rootfs to `/target`
+  - Install Blackfong core services from `manifests/base.yaml`
+- **`50_configure_services`**:
+  - Configure NetworkManager (offline-safe)
+  - Apply firewall toggle (default enabled)
+  - Install/enable system-wide DAISE and (optionally) device-permission rules
+  - Enforce **single-user policy** (fixed UID) and block other user creation
+- **`60_install_desktop`**:
+  - Install Wayland compositor + BDE shell + terminal-first defaults
+  - Configure PipeWire (or PulseAudio where required) and DRM acceleration if supported
+- **`70_install_features`**:
+  - Install feature groups (AI/ML, media, accessories) based on:
+    - `install_source` (offline vs online availability)
+    - detected hardware flags (LoRa/haptics/camera)
+    - user choices (if exposed)
+- **`80_post_install_checks`**:
+  - Verify bootloader installed (EFI or U-Boot path)
+  - Verify DAISE enabled, audio input available if present
+  - Verify basic network connectivity (if hardware present)
+  - Verify AI/ML environment (lightweight sanity checks)
+- **`90_finalize_reboot`**:
+  - Write final summary to log (profile, packages, checks)
+  - Unmount, sync, reboot
+
+### 8.4 Package Installation Strategy (offline-first)
+- **Offline**: media includes a local package repository; `pkg.*` configures sources to prefer it.
+- **Online**: if connectivity is detected, enable online mirrors and fetch optional packages.
+- **Hybrid**: install base+desktop from offline media, fetch extras online when available.
+
+### 8.5 Logging & Reproducibility Requirements
+- Write to **`/var/log/blackfong-installer.log`** (live env + copied into target).
+- Log **every decision** (selected profile, kernel, packages, toggles, detected devices).
+- Log **every command** with start/end timestamps and exit code.
+- Persist the final **state file** (config + hardware profile + completed steps) for support.
+
+### 8.6 Conditional Branching Rules (minimum set)
+- **Architecture**: selects kernel, ABI-specific packages, and output image type.
+- **Firmware**: selects EFI vs U-Boot bootloader path and partition layout.
+- **Hardware presence**: enable LoRa/haptics/camera only if detected.
+- **Network availability**: controls offline/online package sources and optional extras.
+- **User choices**: firewall and DAISE device-permission toggles, partitioning mode.
 
 ---
 
