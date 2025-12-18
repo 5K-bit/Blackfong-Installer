@@ -89,8 +89,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--start-at", default=None, help="Start at step_id (e.g. 30_install_kernel)")
     p.add_argument("--stop-after", default=None, help="Stop after step_id")
     p.add_argument("--force", action="store_true", help="Re-run steps even if marked completed")
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Plan and log actions without executing destructive commands",
+    )
 
     args = p.parse_args(argv)
+
+    # Persist CLI flags into state (source of truth)
+    state = ensure_defaults(load_state(args.state))
+    state.setdefault("config", {})["dry_run"] = bool(args.dry_run)
+    save_state(args.state, state)
 
     run(
         state_path=args.state,
