@@ -1,0 +1,4 @@
+2025-12-18T06:36:08+0000 INFO blackfong_installer.logging_utils: Logging initialized (requested=/workspace/.blackfong-installer.log, actual=/workspace/.blackfong-installer.log)
+2025-12-18T06:36:08+0000 INFO blackfong_installer.pipeline: Running step 10_detect_hardware
+2025-12-18T06:36:08+0000 INFO blackfong_installer.steps.step_10_detect_hardware: Detected arch=amd64 firmware=efi profile=amd64-pc
+2025-12-18T06:36:08+0000 INFO blackfong_installer.pipeline: Stopping after 10_detect_hardware

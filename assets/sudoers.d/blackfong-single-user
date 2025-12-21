@@ -1,0 +1,7 @@
+# Enforce single-user policy: prevent creating/modifying users via sudo.
+# Root can still do anything, but the primary user (in sudo group) cannot
+# trivially create additional accounts through sudo.
+
+Cmnd_Alias USERMGMT = /usr/sbin/useradd, /usr/sbin/adduser, /usr/sbin/usermod, /usr/sbin/userdel, /usr/sbin/deluser, /usr/sbin/groupadd, /usr/sbin/groupdel, /usr/sbin/groupmod
+
+%sudo ALL=(ALL:ALL) ALL, !USERMGMT

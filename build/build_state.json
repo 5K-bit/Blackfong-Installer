@@ -1,0 +1,15 @@
+{
+  "completed": {},
+  "targets": {
+    "amd64": {
+      "completed_steps": [
+        "00_initialize",
+        "01_prepare_live_rootfs",
+        "02_copy_blackfong_assets",
+        "03_configure_boot",
+        "04_integrate_offline_repo",
+        "05_optional_network_config"
+      ]
+    }
+  }
+}

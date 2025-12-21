@@ -1,0 +1,20 @@
+# Optional feature groups. These may be installed offline or fetched online.
+feature_groups:
+  ai_ml:
+    packages:
+      - python3
+      - python3-venv
+      - python3-pip
+      # Examples (actual names may vary by repo/distribution):
+      - python3-torch
+      - onnxruntime
+  media:
+    packages:
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-plugins-good
+      - gstreamer1.0-plugins-bad
+      - gstreamer1.0-plugins-ugly
+  accessories:
+    packages:
+      - bluez
+      - pulseaudio-utils

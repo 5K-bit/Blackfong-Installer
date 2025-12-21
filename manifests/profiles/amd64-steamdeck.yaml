@@ -1,0 +1,7 @@
+id: amd64-steamdeck
+arch: amd64
+firmware: efi
+packages:
+  - linux-image-amd64
+notes:
+  - "Default profile compatible"

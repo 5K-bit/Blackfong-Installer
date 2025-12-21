@@ -1,0 +1,5 @@
+id: amd64-pc
+arch: amd64
+firmware: efi
+packages:
+  - linux-image-amd64

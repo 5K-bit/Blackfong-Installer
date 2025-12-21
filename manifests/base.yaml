@@ -1,0 +1,9 @@
+# Packages/services installed on all systems (offline-first).
+packages:
+  - systemd
+  - coreutils
+  - network-manager
+  - sudo
+  - ca-certificates
+blackfong_services:
+  - daise

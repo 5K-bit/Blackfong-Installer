@@ -1,0 +1,19 @@
+[project]
+name = "blackfong-installer"
+version = "1.0.0"
+description = "Blackfong OS hardware-adaptive installer"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "Proprietary"}
+
+dependencies = [
+  "PyYAML>=6.0.2",
+]
+
+[project.scripts]
+blackfong-installer = "blackfong_installer.main:main"
+blackfong-installer-cli = "ui.cli:main"
+blackfong-build = "blackfong_installer.build:main"
+
+[tool.black]
+line-length = 100

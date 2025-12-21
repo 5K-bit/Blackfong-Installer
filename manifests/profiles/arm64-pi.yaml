@@ -1,0 +1,5 @@
+id: arm64-pi
+arch: arm64
+firmware: uboot
+packages:
+  - linux-image-arm64

@@ -1,0 +1,13 @@
+[Unit]
+Description=DAISE (Blackfong system-wide)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/daise
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
