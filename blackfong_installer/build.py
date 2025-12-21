@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from .build_config import load_build_config
 from .build_state import ensure_build_defaults, load_build_state, save_build_state
 from .build_steps import ALL_STEPS, BuildCtx
+from .lib.command import run_cmd
 from .logging_utils import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,13 @@ def run_build(
     force: bool,
 ) -> None:
     configure_logging(log_path=log_path)
+
+    # Fail-fast preflight: prevents "works on my box" drift.
+    repo_root = Path(__file__).resolve().parents[1]
+    preflight = repo_root / "scripts" / "preflight.sh"
+    if not preflight.exists():
+        raise RuntimeError(f"Missing preflight script: {preflight}")
+    run_cmd(["bash", str(preflight)], check=True, dry_run=False)
 
     cfg = load_build_config(config_path)
     state = ensure_build_defaults(load_build_state(state_path))

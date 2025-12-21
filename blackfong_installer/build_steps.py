@@ -40,6 +40,46 @@ class BuildCtx:
         return self.work_target_dir / f"blackfong-installer-{self.target}.img"
 
 
+def _rm_rf(path: Path, *, dry_run: bool) -> None:
+    """Remove a path recursively (idempotent)."""
+    if path.exists():
+        run_cmd(["rm", "-rf", str(path)], dry_run=dry_run)
+
+
+def _verify_amd64_iso_has_efi(*, iso_path: Path, dry_run: bool) -> None:
+    """Fail hard if ISO lacks EFI boot artifacts."""
+    if dry_run:
+        return
+    if not iso_path.exists():
+        raise RuntimeError(f"ISO missing after build: {iso_path}")
+
+    # Inspect ISO contents without mounting.
+    # We consider it EFI-capable if any .efi file exists under /EFI.
+    r = run_cmd(
+        ["xorriso", "-indev", str(iso_path), "-find", "/EFI", "-type", "f", "-name", "*.efi", "-print"],
+        check=False,
+        dry_run=False,
+    )
+    efi_files = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+    if efi_files:
+        return
+
+    # Fallback: list all files under /EFI and look for BOOTX64.EFI.
+    r2 = run_cmd(
+        ["xorriso", "-indev", str(iso_path), "-find", "/EFI", "-type", "f", "-print"],
+        check=False,
+        dry_run=False,
+    )
+    lines = [ln.strip() for ln in (r2.stdout or "").splitlines() if ln.strip()]
+    if any("BOOTX64.EFI" in ln.upper() for ln in lines):
+        return
+
+    raise RuntimeError(
+        "EFI boot bits missing from ISO (no /EFI/*.efi found). "
+        "grub-mkrescue/xorriso did not emit EFI artifacts."
+    )
+
+
 def step_00_initialize(*, ctx: BuildCtx, state: Dict[str, Any], force: bool) -> None:
     step_id = "00_initialize"
     if (not force) and is_completed(state, target=ctx.target, step_id=step_id):
@@ -303,12 +343,16 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if ctx.target == "amd64":
-        # Minimal ISO structure: squashfs + kernel/initrd copied from rootfs /boot
+        # Produce exactly one artifact: output/blackfong-installer-amd64.iso
+        iso_path = Path((ctx.cfg.raw.get("outputs") or {}).get("amd64_iso") or "output/blackfong-installer-amd64.iso")
+
+        # Idempotency: rm + recreate temp dirs (and overwrite the ISO).
         iso_dir = ctx.iso_dir
-        if iso_dir.exists() and force and not ctx.dry_run:
-            run_cmd(["rm", "-rf", str(iso_dir)], dry_run=ctx.dry_run)
+        _rm_rf(iso_dir, dry_run=ctx.dry_run)
+        if (not ctx.dry_run) and iso_path.exists():
+            run_cmd(["rm", "-f", str(iso_path)], dry_run=ctx.dry_run)
+
         (iso_dir / "live").mkdir(parents=True, exist_ok=True)
-        (iso_dir / "boot").mkdir(parents=True, exist_ok=True)
         (iso_dir / "boot/grub").mkdir(parents=True, exist_ok=True)
 
         squash = iso_dir / "live/filesystem.squashfs"
@@ -316,11 +360,18 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
 
         # Copy kernel/initrd (best-effort: pick newest)
         boot_src = rootfs / "boot"
-        vmlinuz = sorted(boot_src.glob("vmlinuz-*"))[-1]
-        initrd = sorted(boot_src.glob("initrd.img-*"))[-1]
-        if not ctx.dry_run:
-            run_cmd(["cp", "-a", str(vmlinuz), str(iso_dir / "live/vmlinuz")], dry_run=ctx.dry_run)
-            run_cmd(["cp", "-a", str(initrd), str(iso_dir / "live/initrd")], dry_run=ctx.dry_run)
+        vmlinuz_candidates = sorted(boot_src.glob("vmlinuz-*"))
+        initrd_candidates = sorted(boot_src.glob("initrd.img-*"))
+        if not vmlinuz_candidates or not initrd_candidates:
+            raise RuntimeError(
+                f"Missing kernel/initrd in live rootfs boot dir: {boot_src} "
+                "(did step_03_configure_boot run successfully?)"
+            )
+
+        vmlinuz = vmlinuz_candidates[-1]
+        initrd = initrd_candidates[-1]
+        run_cmd(["cp", "-a", str(vmlinuz), str(iso_dir / "live/vmlinuz")], dry_run=ctx.dry_run)
+        run_cmd(["cp", "-a", str(initrd), str(iso_dir / "live/initrd")], dry_run=ctx.dry_run)
 
         # GRUB config for ISO (boot=live uses live-boot inside the squashfs)
         grub_cfg = (
@@ -335,9 +386,25 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
         if not ctx.dry_run:
             (iso_dir / "boot/grub/grub.cfg").write_text(grub_cfg, encoding="utf-8")
 
-        # Build ISO using grub-mkrescue (requires grub tooling + xorriso)
-        iso_path = Path((ctx.cfg.raw.get("outputs") or {}).get("amd64_iso") or "output/blackfong-installer-amd64.iso")
-        run_cmd(["grub-mkrescue", "-o", str(iso_path), str(iso_dir)], dry_run=ctx.dry_run)
+        # Build ISO using grub-mkrescue (requires grub tooling + xorriso).
+        # Requirement: fail hard if grub/xorriso doesn't emit EFI bits.
+        run_cmd(
+            [
+                "grub-mkrescue",
+                "--compress=xz",
+                "--efi-directory=EFI",
+                "-o",
+                str(iso_path),
+                str(iso_dir),
+            ],
+            dry_run=ctx.dry_run,
+        )
+
+        # If 06 doesn't end with a file on disk, it's not real.
+        if not ctx.dry_run and not iso_path.exists():
+            raise RuntimeError(f"ISO was not produced: {iso_path}")
+
+        _verify_amd64_iso_has_efi(iso_path=iso_path, dry_run=ctx.dry_run)
     else:
         # IMG build is more involved; this step implements a generic extlinux/U-Boot layout.
         img_path = Path((ctx.cfg.raw.get("outputs") or {}).get(f"{ctx.target}_img") or f"output/blackfong-installer-{ctx.target}.img")
