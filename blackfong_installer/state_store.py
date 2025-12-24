@@ -79,6 +79,8 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     cfg.setdefault("daise_device_access_enabled", True)
     cfg.setdefault("partitioning", "auto")
     cfg.setdefault("swap", "auto")
+    # Desktop base: "xubuntu" means XFCE desktop stack on our Debian rootfs.
+    cfg.setdefault("desktop_base", "xubuntu")
 
     exe = state["execution"]
     exe.setdefault("current_step", None)
