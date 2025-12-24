@@ -1,0 +1,5 @@
+2025-12-24T19:31:35+0000 INFO blackfong_installer.logging_utils: Logging initialized (requested=/workspace/.tmp_installer/installer.log, actual=/workspace/.tmp_installer/installer.log)
+2025-12-24T19:31:35+0000 INFO blackfong_installer.pipeline: Running step 10_detect_hardware
+2025-12-24T19:31:35+0000 INFO blackfong_installer.lib.command: CMD lsblk -J -o NAME,SIZE,TYPE,RM,TRAN
+2025-12-24T19:31:35+0000 INFO blackfong_installer.lib.hwdetect: Hardware: arch=amd64 firmware=uboot profile=amd64-pc
+2025-12-24T19:31:35+0000 INFO blackfong_installer.pipeline: Stopping after 10_detect_hardware
