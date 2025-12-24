@@ -29,20 +29,39 @@ def apt_update(target_root: str, *, dry_run: bool = False) -> None:
     chroot_cmd(target_root, ["apt-get", "update"], dry_run=dry_run)
 
 
-def apt_install(target_root: str, packages: Sequence[str], *, dry_run: bool = False) -> None:
+def apt_install(
+    target_root: str,
+    packages: Sequence[str],
+    *,
+    with_recommends: bool = False,
+    dry_run: bool = False,
+) -> None:
     if not packages:
         return
+    argv = [
+        "apt-get",
+        "install",
+        "-y",
+    ]
+    if not with_recommends:
+        argv.append("--no-install-recommends")
     chroot_cmd(
         target_root,
-        [
-            "apt-get",
-            "install",
-            "-y",
-            "--no-install-recommends",
-            *packages,
-        ],
+        [*argv, *packages],
         dry_run=dry_run,
     )
+
+
+def apt_has_package(target_root: str, package: str, *, dry_run: bool = False) -> bool:
+    """Return True if apt knows about a package name in the target root.
+
+    This is useful for optional packages that may only exist in some repos.
+    """
+    if dry_run:
+        # Be permissive in dry-run so planning doesn't fail.
+        return True
+    r = run_cmd(["chroot", target_root, "apt-cache", "show", package], check=False)
+    return r.returncode == 0
 
 
 def write_sources_list_offline(
