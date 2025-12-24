@@ -27,9 +27,24 @@ class InstallRootFSStep:
         if not arch:
             raise RuntimeError("hardware.arch missing")
 
-        # Debian debootstrap arch values: amd64, arm64, armhf align with our normalized arch.
-        suite = cfg.get("debian_suite", "stable")
-        mirror = cfg.get("debian_mirror", "http://deb.debian.org/debian")
+        os_base = str(cfg.get("os_base", "ubuntu")).strip().lower()
+        state.setdefault("execution", {}).setdefault("decisions", {})["os_base"] = os_base
+
+        # debootstrap arch values: amd64, arm64, armhf align with our normalized arch.
+        if os_base == "ubuntu":
+            suite = str(cfg.get("ubuntu_suite", "noble"))
+            cfg_mirror = cfg.get("ubuntu_mirror")
+            if cfg_mirror:
+                mirror = str(cfg_mirror)
+            elif arch == "amd64":
+                mirror = "http://archive.ubuntu.com/ubuntu"
+            else:
+                mirror = "http://ports.ubuntu.com/ubuntu-ports"
+        elif os_base == "debian":
+            suite = str(cfg.get("debian_suite", "stable"))
+            mirror = str(cfg.get("debian_mirror", "http://deb.debian.org/debian"))
+        else:
+            raise RuntimeError(f"Unsupported config.os_base={os_base!r} (expected 'ubuntu' or 'debian')")
 
         debootstrap_rootfs(target_root=target_root, suite=suite, mirror=mirror, arch=arch, dry_run=dry_run)
 

@@ -22,6 +22,8 @@ class InstallDesktopStep:
 
         dry_run = bool(cfg.get("dry_run", False))
 
+        os_base = str(cfg.get("os_base", "ubuntu")).strip().lower()
+
         # Desktop base selection:
         # - We run a Debian rootfs today; "xubuntu" here means "Xubuntu-style XFCE desktop".
         desktop_base = str(cfg.get("desktop_base", "xubuntu")).strip().lower()
@@ -32,13 +34,21 @@ class InstallDesktopStep:
         # Xubuntu-style base (XFCE + Xorg + display manager).
         # NOTE: On Debian this is provided by task/meta packages (not Ubuntu's xubuntu-desktop).
         with_recommends = False
-        if desktop_base in {"xubuntu", "xfce", "xfce4"}:
+        if desktop_base in {"xubuntu", "xfce", "xfce4"} and os_base == "ubuntu":
+            packages += ["xubuntu-desktop"]
+            with_recommends = True
+        elif desktop_base in {"xubuntu", "xfce", "xfce4"} and os_base == "debian":
             packages += [
                 "task-xfce-desktop",
                 "lightdm",
                 "network-manager-gnome",
             ]
             with_recommends = True
+        elif desktop_base:
+            raise RuntimeError(
+                f"Unsupported desktop_base={desktop_base!r} for os_base={os_base!r}. "
+                "Supported: xubuntu/xfce/xfce4"
+            )
 
         # Optional: Blackfong shell (only if repo provides it).
         blackfong_shell_pkg = str(cfg.get("blackfong_shell_package", "blackfong-bde-shell")).strip()

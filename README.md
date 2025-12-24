@@ -288,6 +288,9 @@ This project is designed to run from a privileged live environment (installer me
 - **CLI entrypoint**:
   - `python3 -m blackfong_installer --state /var/lib/blackfong-installer/state.json`
 - **Key config fields** (in `state['config']`):
+  - `os_base`: `ubuntu|debian` (default `ubuntu`)
+  - `ubuntu_suite`: e.g. `noble` (24.04 LTS), `jammy` (22.04 LTS)
+  - `ubuntu_mirror`: optional override (defaults to `archive.ubuntu.com` for amd64, `ports.ubuntu.com` for arm*)
   - `target_disk`: required (e.g. `/dev/nvme0n1`, `/dev/sda`, `/dev/mmcblk0`)
   - `install_source`: `offline|online|hybrid`
   - `firewall_enabled`: default `true`

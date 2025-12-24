@@ -79,6 +79,15 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     cfg.setdefault("daise_device_access_enabled", True)
     cfg.setdefault("partitioning", "auto")
     cfg.setdefault("swap", "auto")
+    # Target OS base.
+    # - ubuntu: enables xubuntu-desktop and Ubuntu package naming.
+    # - debian: keeps debootstrap+packages aligned with Debian.
+    cfg.setdefault("os_base", "ubuntu")
+    cfg.setdefault("ubuntu_suite", "noble")
+    # Default mirror is selected per-arch (archive vs ports) in step_40_install_rootfs.
+    cfg.setdefault("ubuntu_mirror", None)
+    cfg.setdefault("debian_suite", "stable")
+    cfg.setdefault("debian_mirror", "http://deb.debian.org/debian")
     # Desktop base: "xubuntu" means XFCE desktop stack on our Debian rootfs.
     cfg.setdefault("desktop_base", "xubuntu")
 

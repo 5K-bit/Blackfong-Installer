@@ -6,9 +6,16 @@ from typing import Any, Dict
 from ..lib.block import get_uuid
 from ..lib.bootloader import install_grub_efi, write_extlinux_config
 from ..lib.chroot import mount_chroot_binds, umount_chroot_binds
-from ..lib.pkg import apt_install, apt_update
+from ..lib.pkg import apt_has_package, apt_install, apt_update
 
 logger = logging.getLogger(__name__)
+
+GRUB_EFI_BY_ARCH = {
+    "amd64": ["grub-efi-amd64"],
+    "arm64": ["grub-efi-arm64"],
+    # Rare, but keep a best-effort mapping.
+    "armhf": ["grub-efi-arm", "grub-efi-armhf"],
+}
 
 
 class InstallBootloaderStep:
@@ -29,6 +36,10 @@ class InstallBootloaderStep:
         if firmware not in {"efi", "uboot"}:
             raise RuntimeError(f"hardware.firmware must be efi|uboot, got {firmware}")
 
+        arch = hw.get("arch")
+        if not arch:
+            raise RuntimeError("hardware.arch is missing")
+
         dry_run = bool(cfg.get("dry_run", False))
 
         # Ensure bootloader tooling exists inside target
@@ -36,10 +47,19 @@ class InstallBootloaderStep:
         try:
             apt_update(target_root, dry_run=dry_run)
             if firmware == "efi":
-                apt_install(target_root, ["grub-efi-amd64", "efibootmgr"], dry_run=dry_run)
+                grub_candidates = GRUB_EFI_BY_ARCH.get(arch)
+                if not grub_candidates:
+                    raise RuntimeError(f"Unsupported arch for EFI grub selection: {arch}")
+                grub_pkg = next((p for p in grub_candidates if apt_has_package(target_root, p, dry_run=dry_run)), None)
+                if not grub_pkg:
+                    raise RuntimeError(
+                        f"No supported grub-efi package found for arch={arch}. "
+                        f"Tried: {', '.join(grub_candidates)}"
+                    )
+                apt_install(target_root, [grub_pkg, "efibootmgr"], with_recommends=True, dry_run=dry_run)
             else:
                 # extlinux is typically provided via syslinux-common/extlinux
-                apt_install(target_root, ["extlinux", "syslinux-common"], dry_run=dry_run)
+                apt_install(target_root, ["extlinux", "syslinux-common"], with_recommends=True, dry_run=dry_run)
         finally:
             umount_chroot_binds(target_root, dry_run=dry_run)
 
