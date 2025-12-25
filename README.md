@@ -106,9 +106,9 @@ Override (hard requirement for edge cases):
 - **DAISE**: Enabled system-wide; no multi-user support.
 - **Single-user**: Created with fixed UID; no other users can be created.
 
-### Step 5 — Desktop Environment (Blackfong’s Code Warden)
-- Install the terminal-first desktop identity: **Code Warden**.
-- Default intent: minimal Wayland stack + terminal-centric workflow (control-oriented, not “pampered”).
+### Step 5 — Desktop Environment (Xubuntu desktop)
+- Default boot target is an **XFCE (“Xubuntu-style”) desktop**.
+- **Code Warden** remains an optional alternate terminal-first identity (selectable via state config).
 - Multi-monitor layouts deferred to post-installation.
 - Audio/video drivers installed and configured (PipeWire / PulseAudio).
 
