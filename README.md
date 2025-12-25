@@ -6,7 +6,9 @@
 Provide a unified, hardware-adaptive installer for Blackfong OS targeting **ARM64**, **ARM32 (legacy)**, and **x86_64** systems including Raspberry Pi, uConsole, laptops/PCs, and Steam Deck.
 
 ### Scope
-Supports a terminal-first desktop (**Blackfong’s Code Warden**), system-wide DAISE, AI/ML tooling, media playback, accessories, and hardware detection **that drives real install decisions**.
+Supports an **XFCE (“Xubuntu-style”) desktop**, system-wide DAISE, AI/ML tooling, media playback, accessories, and hardware detection **that drives real install decisions**.
+
+Within the OS, Blackfong also provides **Code Warden** as a terminal-first capability (tools + optional shell), not a separate OS.
 
 ---
 
@@ -108,7 +110,7 @@ Override (hard requirement for edge cases):
 
 ### Step 5 — Desktop Environment (Xubuntu desktop)
 - Default boot target is an **XFCE (“Xubuntu-style”) desktop**.
-- **Code Warden** remains an optional alternate terminal-first identity (selectable via state config).
+- **Code Warden** is available *within the OS* as a terminal-first capability (enabled/disabled via state config), not as a separate desktop base.
 - Multi-monitor layouts deferred to post-installation.
 - Audio/video drivers installed and configured (PipeWire / PulseAudio).
 
@@ -228,6 +230,8 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - `hostname`, `locale`, `timezone`, `keyboard_layout`
   - `ssh_enabled`: `true|false` (default `true`)
   - `ssh_authorized_keys`: list of SSH public keys to install for deterministic access
+  - `desktop_base`: `xubuntu|xfce` (default `xubuntu`)
+  - `code_warden_enabled`: `true|false` (default `true`) – install Code Warden tools alongside XFCE
 
 - **Hardware profile** (detected):
   - `arch`: `arm64|armhf|amd64`
@@ -267,7 +271,8 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - Install/enable system-wide DAISE and (optionally) device-permission rules
   - Enforce **single-user policy** (fixed UID) and block other user creation
 - **`60_install_desktop`**:
-  - Install Code Warden desktop identity + terminal-first defaults
+  - Install XFCE (“Xubuntu-style”) desktop
+  - Optionally install Code Warden toolset within the OS (terminal-first capability)
   - Configure PipeWire (or PulseAudio where required) and DRM acceleration if supported
 - **`70_install_features`**:
   - Install feature groups based on:

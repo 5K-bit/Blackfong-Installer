@@ -82,8 +82,9 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     cfg.setdefault("swap", "auto")
     # Desktop default:
     # The OS should boot into an XFCE ("Xubuntu-style") desktop by default.
-    # "code-warden" remains available as an alternate terminal-first identity.
+    # Code Warden is an in-OS capability (not a separate OS / not a separate desktop base).
     cfg.setdefault("desktop_base", "xubuntu")
+    cfg.setdefault("code_warden_enabled", True)
     cfg.setdefault("blackfong_shell_package", "blackfong-code-warden-shell")
 
     # Node identity + control plane defaults (this OS treats itself as "one node in a larger system").

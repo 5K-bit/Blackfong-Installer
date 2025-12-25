@@ -22,27 +22,16 @@ class InstallDesktopStep:
 
         dry_run = bool(cfg.get("dry_run", False))
 
-        # Desktop base selection:
-        # - "code-warden" is a terminal-first, control-oriented Wayland stack.
-        # - "xubuntu"/"xfce" is an optional compatibility base.
-        desktop_base = str(cfg.get("desktop_base", "code-warden")).strip().lower()
+        # Desktop base:
+        # - OS boots into XFCE ("Xubuntu-style") by default.
+        # - Code Warden is an optional in-OS capability installed alongside XFCE.
+        desktop_base = str(cfg.get("desktop_base", "xubuntu")).strip().lower()
+        code_warden_enabled = bool(cfg.get("code_warden_enabled", False))
 
         # Baseline audio/media stack.
         packages: list[str] = ["pipewire", "wireplumber", "gstreamer1.0-tools"]
 
         with_recommends = False
-
-        # Code Warden: minimal, terminal-first Wayland stack.
-        if desktop_base in {"code-warden", "code_warden", "warden"}:
-            packages += [
-                "sway",
-                "foot",
-                "waybar",
-                "wofi",
-                "xwayland",
-                "network-manager-gnome",
-                "wl-clipboard",
-            ]
 
         # Xubuntu-style base (XFCE + Xorg + display manager).
         # NOTE: On Debian this is provided by task/meta packages (not Ubuntu's xubuntu-desktop).
@@ -53,6 +42,26 @@ class InstallDesktopStep:
                 "network-manager-gnome",
             ]
             with_recommends = True
+        else:
+            # If someone sets a non-xfce desktop_base today, do not silently install nothing.
+            # Keep behavior honest: install XFCE baseline unless/ until more desktop bases exist.
+            packages += [
+                "task-xfce-desktop",
+                "lightdm",
+                "network-manager-gnome",
+            ]
+            with_recommends = True
+
+        # Code Warden: terminal-first toolset available within the OS.
+        if code_warden_enabled:
+            packages += [
+                "sway",
+                "foot",
+                "waybar",
+                "wofi",
+                "xwayland",
+                "wl-clipboard",
+            ]
 
         # Optional: Blackfong shell (only if repo provides it).
         blackfong_shell_pkg = str(cfg.get("blackfong_shell_package", "blackfong-code-warden-shell")).strip()
@@ -66,5 +75,9 @@ class InstallDesktopStep:
         finally:
             umount_chroot_binds(target_root, dry_run=dry_run)
 
-        logger.info("Desktop stack installed (desktop_base=%s)", desktop_base)
+        logger.info(
+            "Desktop stack installed (desktop_base=%s code_warden_enabled=%s)",
+            desktop_base,
+            code_warden_enabled,
+        )
         return state
