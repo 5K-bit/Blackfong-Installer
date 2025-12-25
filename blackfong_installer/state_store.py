@@ -71,6 +71,7 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     state.setdefault("config", {})
     state.setdefault("hardware", {})
     state.setdefault("execution", {})
+    state.setdefault("profile", {})
 
     cfg = state["config"]
     cfg.setdefault("mode", "cli")
@@ -79,8 +80,18 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     cfg.setdefault("daise_device_access_enabled", True)
     cfg.setdefault("partitioning", "auto")
     cfg.setdefault("swap", "auto")
-    # Desktop base: "xubuntu" means XFCE desktop stack on our Debian rootfs.
+    # Desktop default:
+    # The OS should boot into an XFCE ("Xubuntu-style") desktop by default.
+    # Code Warden is an in-OS capability (not a separate OS / not a separate desktop base).
     cfg.setdefault("desktop_base", "xubuntu")
+    cfg.setdefault("code_warden_enabled", True)
+    cfg.setdefault("blackfong_shell_package", "blackfong-code-warden-shell")
+
+    # Node identity + control plane defaults (this OS treats itself as "one node in a larger system").
+    cfg.setdefault("hostname", "blackfong-node")
+    cfg.setdefault("ssh_enabled", True)
+    # Optional: populate to make SSH access deterministic on first boot.
+    cfg.setdefault("ssh_authorized_keys", [])
 
     exe = state["execution"]
     exe.setdefault("current_step", None)

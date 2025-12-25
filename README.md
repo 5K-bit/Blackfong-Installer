@@ -6,7 +6,9 @@
 Provide a unified, hardware-adaptive installer for Blackfong OS targeting **ARM64**, **ARM32 (legacy)**, and **x86_64** systems including Raspberry Pi, uConsole, laptops/PCs, and Steam Deck.
 
 ### Scope
-Supports a terminal-first desktop, system-wide DAISE, AI/ML tooling, media playback, accessories, and hardware detection.
+Supports an **XFCE (“Xubuntu-style”) desktop**, system-wide DAISE, AI/ML tooling, media playback, accessories, and hardware detection **that drives real install decisions**.
+
+Within the OS, Blackfong also provides **Code Warden** as a terminal-first capability (tools + optional shell), not a separate OS.
 
 ---
 
@@ -18,6 +20,12 @@ Supports a terminal-first desktop, system-wide DAISE, AI/ML tooling, media playb
 - **Offline + online**: Supports offline (USB/SD/ISO) and online installation.
 - **Flexible UI**: Text-based (CLI) and optional graphical (GUI).
 - **Modular & future-proof**: Hardware features auto-enable only when present.
+
+### Non-negotiables (project integrity)
+- **A rock-solid CLI that never lies**: compute and persist a **plan** (packages/services/features) from state + detection before taking action; dry-run must reflect the same plan.
+- **A GUI stub that only wraps core logic**: GUI collects inputs and writes state, but does not change behavior.
+- **Identical behavior regardless of interface**: same state + same detection → same actions.
+- **If CLI and GUI ever disagree, the project is bToken**.
 
 ---
 
@@ -62,10 +70,22 @@ Automatically detect and log:
 | Displays | EDID / DRM | Confirm detection; layout deferred post-install |
 | WiFi | `lspci` / `lsusb` / `iw` | NetworkManager configuration |
 | Bluetooth | `hcitool` / `lsusb` | Enable BLE accessories support |
-| LoRa | SPI / USB probe | Enable only if detected |
-| Haptics | BLE / USB HID | Enable only if detected |
+| LoRa | SPI / USB probe | **Opt-in via profile** (never install/enable by default) |
+| Haptics | BLE / USB HID | **Opt-in via profile** (never install/enable by default) |
 | Audio / Mic | ALSA / PipeWire | Enable system audio & DAISE audio input |
 | Camera | V4L2 / libcamera | Enable DAISE optional input |
+
+#### Profile auto-selection (rule engine)
+The installer auto-picks a profile using **real identity signals**, and writes the evidence into state:
+- **PC vs Steam Deck (amd64)**: DMI (`/sys/class/dmi/id/*`) with Valve/Jupiter/Galileo identifiers.
+- **SBC model (arm64)**: device-tree model (`/sys/firmware/devicetree/base/model`).
+
+The selected profile and its confidence are stored under:
+- `state['hardware']['profile']`
+- `state['hardware']['profile_selection']` (reason + evidence)
+
+Override (hard requirement for edge cases):
+- Set `state['config']['profile']` to force a specific profile id (e.g. `amd64-steamdeck`, `arm64-uconsole`).
 
 ### Step 2 — Partition & Filesystem
 - **Auto-partition**: root (`/`) + optional swap.
@@ -88,20 +108,32 @@ Automatically detect and log:
 - **DAISE**: Enabled system-wide; no multi-user support.
 - **Single-user**: Created with fixed UID; no other users can be created.
 
-### Step 5 — Desktop Environment (BDE)
-- Install Wayland compositor + Blackfong shell.
-- Terminal-first environment.
+### Step 5 — Desktop Environment (Xubuntu desktop)
+- Default boot target is an **XFCE (“Xubuntu-style”) desktop**.
+- **Code Warden** is available *within the OS* as a terminal-first capability (enabled/disabled via state config), not as a separate desktop base.
 - Multi-monitor layouts deferred to post-installation.
 - Audio/video drivers installed and configured (PipeWire / PulseAudio).
 
 ### Step 6 — Feature Installation
-- AI/ML packages (Python, PyTorch, ONNX, etc.).
-- Media playback (MP3/MP4 via GStreamer).
-- Hardware-specific drivers (enabled only if detected):
-  - LoRa
-  - Haptics / BLE accessories
-  - Camera / mic
-- Optional packages fetched online if network is present.
+#### AI/ML feature bundles (explicit)
+- **`ai_ml_core`**: Python foundation (always safe).
+- **`ai_ml_cpu`**: CPU inference/runtime (safe default).
+- **`ai_ml_gpu_*`**: GPU accelerators selected strictly from detected GPU vendor (only attempted when `install_source` permits and network is available).
+
+#### Media feature bundles (explicit)
+- **`media_core`**: baseline plugins/codecs.
+- **`media_full`**: additional plugins/codecs.
+- **`media_hwaccel_*`**: GPU-dependent acceleration path selected by vendor when GPU is present.
+
+#### Hardware detection that actually means something (strict rules)
+- **Camera detected → camera bundle enabled**
+  - If V4L2 nodes exist (e.g. `/dev/video*`), camera bundle may be installed/enabled.
+- **No camera → nothing installed, nothing listening**
+  - No camera bundle packages installed; no camera services enabled.
+- **LoRa / haptics / sensors → opt-in via profile**
+  - These are never installed/enabled unless the selected `manifests/profiles/*.yaml` opts in.
+- **GPU detected → different AI/media path**
+  - GPU presence/vendor selects different AI/ML and media acceleration bundles.
 
 ### Step 7 — Post-Install Setup
 - Default keyboard shortcuts and hotkeys.
@@ -178,7 +210,7 @@ This section defines an implementable structure for a modular installer where **
   - `gui_stub.py`: optional (Wayland/GTK/Qt); calls the same core pipeline APIs
 - **`manifests/`**: package manifests + profiles
   - `base.yaml`: always-installed packages/services
-  - `desktop.yaml`: BDE compositor + shell + terminal-first tooling
+  - `desktop.yaml`: Code Warden desktop identity (terminal-first)
   - `features.yaml`: AI/ML, media, accessories (split into feature groups)
   - `profiles/`
     - `arm64-pi.yaml`, `arm64-uconsole.yaml`, `amd64-pc.yaml`, `amd64-steamdeck.yaml`, `armhf-legacy.yaml`
@@ -196,6 +228,10 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - `target_disk`: `/dev/nvme0n1|/dev/sda|/dev/mmcblk0|...`
   - `swap`: `none|auto|size_mb`
   - `hostname`, `locale`, `timezone`, `keyboard_layout`
+  - `ssh_enabled`: `true|false` (default `true`)
+  - `ssh_authorized_keys`: list of SSH public keys to install for deterministic access
+  - `desktop_base`: `xubuntu|xfce` (default `xubuntu`)
+  - `code_warden_enabled`: `true|false` (default `true`) – install Code Warden tools alongside XFCE
 
 - **Hardware profile** (detected):
   - `arch`: `arm64|armhf|amd64`
@@ -211,12 +247,14 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - `current_step`, `completed_steps[]`
   - `mounts`: target root mountpoint, EFI/boot mountpoint
   - `errors[]`: structured error objects with step + command + exit code
+  - `plan`: computed “truth” of what will be installed/enabled (must match for CLI and GUI)
 
 ### 8.3 Step Responsibilities (what each module must do)
 - **`10_detect_hardware`**:
   - Produce `hardware_profile` and write it to the state file
   - Decide a **profile** (e.g. `amd64-steamdeck`) from rules
   - Log all probe outputs (redact secrets)
+  - Detect camera/GPU signals that materially change what is installed/enabled
 - **`20_partition_fs`**:
   - Enforce **GPT**; create EFI System Partition for EFI targets
   - Create root (`/`) ext4; optional swap
@@ -233,13 +271,15 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - Install/enable system-wide DAISE and (optionally) device-permission rules
   - Enforce **single-user policy** (fixed UID) and block other user creation
 - **`60_install_desktop`**:
-  - Install Wayland compositor + BDE shell + terminal-first defaults
+  - Install XFCE (“Xubuntu-style”) desktop
+  - Optionally install Code Warden toolset within the OS (terminal-first capability)
   - Configure PipeWire (or PulseAudio where required) and DRM acceleration if supported
 - **`70_install_features`**:
-  - Install feature groups (AI/ML, media, accessories) based on:
+  - Install feature groups based on:
     - `install_source` (offline vs online availability)
-    - detected hardware flags (LoRa/haptics/camera)
-    - user choices (if exposed)
+    - strict camera gate (no camera → no camera bundle)
+    - profile opt-ins (LoRa/haptics/sensors)
+    - GPU vendor (AI/media bundle selection)
 - **`80_post_install_checks`**:
   - Verify bootloader installed (EFI or U-Boot path)
   - Verify DAISE enabled, audio input available if present
@@ -263,7 +303,8 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
 ### 8.6 Conditional Branching Rules (minimum set)
 - **Architecture**: selects kernel, ABI-specific packages, and output image type.
 - **Firmware**: selects EFI vs U-Boot bootloader path and partition layout.
-- **Hardware presence**: enable LoRa/haptics/camera only if detected.
+- **Hardware presence**: camera is strictly gated by detection (no camera → no camera bundle/services).
+- **Profile opt-ins**: LoRa/haptics/sensors are installed/enabled only when opted-in by profile.
 - **Network availability**: controls offline/online package sources and optional extras.
 - **User choices**: firewall and DAISE device-permission toggles, partitioning mode.
 
@@ -293,6 +334,68 @@ This project is designed to run from a privileged live environment (installer me
   - `firewall_enabled`: default `true`
   - `daise_device_access_enabled`: default `true`
   - `dry_run`: `true` logs and plans without destructive commands
+
+---
+
+## 11. Node-first OS defaults (“one node in a larger system”)
+Blackfong OS should be controllable by default:
+- **Clean networking defaults**: NetworkManager enabled; no “desktop-only” assumptions.
+- **Predictable hostname/identity**: default hostname is `blackfong-node` unless overridden in state.
+- **Easy SSH access**: SSH enabled by default; recommend injecting `ssh_authorized_keys` via state for deterministic access.
+- **Ready to be controlled, not pampered**: automation-friendly defaults and predictable behavior.
+
+---
+
+## 12. Code Warden (in-OS coding agent shell)
+**Code Warden** is an in-OS capability: a workspace-scoped coding agent shell that can read/write project files and run dev commands, with a safety model designed for LLM-assisted coding.
+
+### What it is (right now)
+- A **workspace-scoped CLI** (`code-warden`) that provides:
+  - File read/write within a chosen workspace root
+  - A patch applier designed for deterministic LLM output
+  - A command runner that executes inside the workspace with a timeout
+  - An **audit log** of actions (`<workspace>/.code-warden/audit.jsonl`)
+
+### What it is NOT (yet)
+- A fully integrated LLM backend. The REPL supports “slash commands” today; an LLM can be wired later to emit the same patch/run actions.
+
+### Quick usage
+Run the interactive REPL:
+
+```bash
+code-warden --workspace /path/to/project repl
+```
+
+List/read files:
+
+```bash
+code-warden --workspace /path/to/project ls
+code-warden --workspace /path/to/project read README.md
+```
+
+Write a file from stdin:
+
+```bash
+printf "hello\\n" | code-warden --workspace /path/to/project write notes.txt
+```
+
+Run a command in the workspace:
+
+```bash
+code-warden --workspace /path/to/project run -- python3 -m pytest
+```
+
+Apply a patch from stdin (recommended “FULL” update format):
+
+```bash
+cat <<'EOF' | code-warden --workspace /path/to/project apply
+*** Begin Patch
+*** Update File: src/app.py
+@@ FULL
++print("hello")
+*** End Patch
+EOF
+```
 
 ### Build installer media artifacts (project automation)
 Build scripts live under `scripts/`:

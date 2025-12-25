@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict
 
 from ..lib.hwdetect import detect_hardware
+from ..lib.manifests import load_profile
 
 logger = logging.getLogger(__name__)
 
@@ -15,5 +16,12 @@ class DetectHardwareStep:
         cfg = state.get("config") or {}
         dry_run = bool(cfg.get("dry_run", False))
 
-        state["hardware"] = detect_hardware(dry_run=dry_run)
+        forced_profile = cfg.get("profile")
+        hw = detect_hardware(dry_run=dry_run, forced_profile=str(forced_profile).strip() or None)
+        state["hardware"] = hw
+
+        profile_id = hw.get("profile")
+        if profile_id:
+            # Profiles are declarative: opt-ins + defaults. They do not execute logic.
+            state["profile"] = load_profile(str(profile_id))
         return state

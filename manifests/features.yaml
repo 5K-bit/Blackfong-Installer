@@ -1,20 +1,76 @@
-# Optional feature groups. These may be installed offline or fetched online.
+# Optional feature groups. The installer selects these strictly from:
+# - detected hardware signals (camera/gpu/etc)
+# - profile opt-ins (LoRa/haptics/sensors/etc)
+# - install_source (offline|online|hybrid) and connectivity
+#
+# Rule: if a feature group is not selected, it is not installed, and no service is enabled.
 feature_groups:
-  ai_ml:
+  # --- AI/ML bundles ---
+  # Always safe offline baseline (no GPU assumptions).
+  ai_ml_core:
     packages:
       - python3
       - python3-venv
       - python3-pip
-      # Examples (actual names may vary by repo/distribution):
-      - python3-torch
+
+  # CPU-only runtime (safe default when offline or no GPU path is selected).
+  ai_ml_cpu:
+    packages:
       - onnxruntime
-  media:
+
+  # GPU-specific accelerators (only attempted when allowed online + GPU vendor detected).
+  # These package names are distro/repo dependent; installer will skip missing ones.
+  ai_ml_gpu_nvidia:
+    packages:
+      - nvidia-cuda-toolkit
+      - python3-torch
+  ai_ml_gpu_amd:
+    packages:
+      - rocm-opencl-runtime
+      - python3-torch
+  ai_ml_gpu_intel:
+    packages:
+      - intel-opencl-icd
+      - python3-torch
+
+  # --- Media bundles ---
+  media_core:
     packages:
       - gstreamer1.0-plugins-base
       - gstreamer1.0-plugins-good
+  media_full:
+    packages:
       - gstreamer1.0-plugins-bad
       - gstreamer1.0-plugins-ugly
-  accessories:
+
+  # GPU-dependent media acceleration path (only selected if GPU present).
+  media_hwaccel_intel:
+    packages:
+      - vainfo
+      - intel-media-va-driver
+  media_hwaccel_amd:
+    packages:
+      - vainfo
+      - mesa-va-drivers
+  media_hwaccel_nvidia:
+    packages:
+      - vdpauinfo
+      - libvdpau1
+
+  # --- Hardware-gated bundles ---
+  # Camera: strict auto-gate; if no camera is detected, this group is never installed/enabled.
+  camera:
+    packages:
+      - v4l-utils
+      - libcamera0
+
+  # Opt-in via profile; installer may still skip if hardware is not detected.
+  lora:
+    packages:
+      - python3-serial
+  haptics:
     packages:
       - bluez
-      - pulseaudio-utils
+  sensors:
+    packages:
+      - iio-sensor-proxy

@@ -5,3 +5,10 @@ packages:
   - linux-image-armhf
 notes:
   - "Experimental legacy"
+features:
+  lora: false
+  haptics: false
+  sensors: false
+  camera: auto
+  ai_ml: auto
+  media: auto

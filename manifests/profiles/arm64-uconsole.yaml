@@ -3,3 +3,10 @@ arch: arm64
 firmware: uboot
 packages:
   - linux-image-arm64
+features:
+  lora: false
+  haptics: false
+  sensors: false
+  camera: auto
+  ai_ml: auto
+  media: auto

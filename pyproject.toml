@@ -14,6 +14,7 @@ dependencies = [
 blackfong-installer = "blackfong_installer.main:main"
 blackfong-installer-cli = "ui.cli:main"
 blackfong-build = "blackfong_installer.build:main"
+code-warden = "code_warden.cli:main"
 
 [tool.black]
 line-length = 100

@@ -3,6 +3,7 @@ packages:
   - systemd
   - coreutils
   - network-manager
+  - openssh-server
   - sudo
   - ca-certificates
 blackfong_services:
