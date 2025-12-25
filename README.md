@@ -344,6 +344,59 @@ Blackfong OS should be controllable by default:
 - **Easy SSH access**: SSH enabled by default; recommend injecting `ssh_authorized_keys` via state for deterministic access.
 - **Ready to be controlled, not pampered**: automation-friendly defaults and predictable behavior.
 
+---
+
+## 12. Code Warden (in-OS coding agent shell)
+**Code Warden** is an in-OS capability: a workspace-scoped coding agent shell that can read/write project files and run dev commands, with a safety model designed for LLM-assisted coding.
+
+### What it is (right now)
+- A **workspace-scoped CLI** (`code-warden`) that provides:
+  - File read/write within a chosen workspace root
+  - A patch applier designed for deterministic LLM output
+  - A command runner that executes inside the workspace with a timeout
+  - An **audit log** of actions (`<workspace>/.code-warden/audit.jsonl`)
+
+### What it is NOT (yet)
+- A fully integrated LLM backend. The REPL supports “slash commands” today; an LLM can be wired later to emit the same patch/run actions.
+
+### Quick usage
+Run the interactive REPL:
+
+```bash
+code-warden --workspace /path/to/project repl
+```
+
+List/read files:
+
+```bash
+code-warden --workspace /path/to/project ls
+code-warden --workspace /path/to/project read README.md
+```
+
+Write a file from stdin:
+
+```bash
+printf "hello\\n" | code-warden --workspace /path/to/project write notes.txt
+```
+
+Run a command in the workspace:
+
+```bash
+code-warden --workspace /path/to/project run -- python3 -m pytest
+```
+
+Apply a patch from stdin (recommended “FULL” update format):
+
+```bash
+cat <<'EOF' | code-warden --workspace /path/to/project apply
+*** Begin Patch
+*** Update File: src/app.py
+@@ FULL
++print("hello")
+*** End Patch
+EOF
+```
+
 ### Build installer media artifacts (project automation)
 Build scripts live under `scripts/`:
 - `scripts/build_installer_media_amd64_efi.sh`
