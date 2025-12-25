@@ -16,7 +16,8 @@ class DetectHardwareStep:
         cfg = state.get("config") or {}
         dry_run = bool(cfg.get("dry_run", False))
 
-        hw = detect_hardware(dry_run=dry_run)
+        forced_profile = cfg.get("profile")
+        hw = detect_hardware(dry_run=dry_run, forced_profile=str(forced_profile).strip() or None)
         state["hardware"] = hw
 
         profile_id = hw.get("profile")

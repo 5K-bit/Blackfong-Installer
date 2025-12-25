@@ -73,6 +73,18 @@ Automatically detect and log:
 | Audio / Mic | ALSA / PipeWire | Enable system audio & DAISE audio input |
 | Camera | V4L2 / libcamera | Enable DAISE optional input |
 
+#### Profile auto-selection (rule engine)
+The installer auto-picks a profile using **real identity signals**, and writes the evidence into state:
+- **PC vs Steam Deck (amd64)**: DMI (`/sys/class/dmi/id/*`) with Valve/Jupiter/Galileo identifiers.
+- **SBC model (arm64)**: device-tree model (`/sys/firmware/devicetree/base/model`).
+
+The selected profile and its confidence are stored under:
+- `state['hardware']['profile']`
+- `state['hardware']['profile_selection']` (reason + evidence)
+
+Override (hard requirement for edge cases):
+- Set `state['config']['profile']` to force a specific profile id (e.g. `amd64-steamdeck`, `arm64-uconsole`).
+
 ### Step 2 — Partition & Filesystem
 - **Auto-partition**: root (`/`) + optional swap.
 - **Filesystem**: `ext4` (default).

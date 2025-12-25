@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import platform
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 from .command import run_cmd
 from .firmware import detect_firmware
@@ -29,6 +29,98 @@ def normalize_arch(machine: str) -> str:
         "armv7l": "armhf",
         "armv6l": "armhf",
     }.get(m, m)
+
+
+def _read_text(path: Path) -> Optional[str]:
+    try:
+        txt = path.read_text(encoding="utf-8", errors="ignore").strip()
+        return txt or None
+    except Exception:
+        return None
+
+
+def _detect_identity() -> Dict[str, Any]:
+    """Collect host identity signals (best-effort).
+
+    These are used by the profile rule engine to distinguish PC vs Steam Deck vs SBC models.
+    """
+
+    dmi = Path("/sys/class/dmi/id")
+    dt = Path("/sys/firmware/devicetree/base")
+
+    identity: Dict[str, Any] = {
+        "dmi": {
+            "sys_vendor": _read_text(dmi / "sys_vendor"),
+            "product_name": _read_text(dmi / "product_name"),
+            "product_version": _read_text(dmi / "product_version"),
+            "board_name": _read_text(dmi / "board_name"),
+        },
+        "device_tree": {
+            "model": _read_text(dt / "model") or _read_text(Path("/proc/device-tree/model")),
+        },
+        "virtualization": {
+            "product_name_hint": _read_text(dmi / "product_name"),
+        },
+    }
+    return identity
+
+
+def _pick_profile(hw: Dict[str, Any], *, forced_profile: Optional[str]) -> Tuple[str, Dict[str, Any]]:
+    """Rule engine: pick best profile + record why."""
+
+    if forced_profile:
+        return forced_profile, {"confidence": 1.0, "reason": "forced_profile", "evidence": {"forced_profile": forced_profile}}
+
+    arch = str(hw.get("arch") or "")
+    identity = hw.get("identity") or {}
+    dmi = (identity.get("dmi") or {}) if isinstance(identity, dict) else {}
+    dt = (identity.get("device_tree") or {}) if isinstance(identity, dict) else {}
+
+    sys_vendor = str(dmi.get("sys_vendor") or "").lower()
+    product_name = str(dmi.get("product_name") or "").lower()
+    board_name = str(dmi.get("board_name") or "").lower()
+    dt_model = str(dt.get("model") or "").lower()
+
+    # Steam Deck (Jupiter/Galileo). Typically reports Valve in DMI.
+    if arch == "amd64":
+        if ("valve" in sys_vendor) or ("steam deck" in product_name) or ("jupiter" in product_name) or ("galileo" in product_name):
+            return "amd64-steamdeck", {
+                "confidence": 0.95,
+                "reason": "dmi_matches_steamdeck",
+                "evidence": {"sys_vendor": sys_vendor, "product_name": product_name},
+            }
+        return "amd64-pc", {
+            "confidence": 0.75,
+            "reason": "amd64_default",
+            "evidence": {"sys_vendor": sys_vendor, "product_name": product_name},
+        }
+
+    # ARM64 SBCs: device-tree model is the most reliable signal.
+    if arch == "arm64":
+        if "uconsole" in dt_model or "clockwork" in dt_model:
+            return "arm64-uconsole", {
+                "confidence": 0.9,
+                "reason": "device_tree_matches_uconsole",
+                "evidence": {"model": dt_model},
+            }
+        if "raspberry pi" in dt_model:
+            return "arm64-pi", {
+                "confidence": 0.9,
+                "reason": "device_tree_matches_rpi",
+                "evidence": {"model": dt_model},
+            }
+        # Unknown ARM64 SBC: prefer the Pi profile as the most conservative baseline today.
+        return "arm64-pi", {
+            "confidence": 0.55,
+            "reason": "arm64_fallback",
+            "evidence": {"model": dt_model},
+        }
+
+    # ARMHF legacy: keep explicit legacy profile.
+    if arch == "armhf":
+        return "armhf-legacy", {"confidence": 0.7, "reason": "armhf_default", "evidence": {"model": dt_model}}
+
+    return "amd64-pc", {"confidence": 0.3, "reason": "unknown_arch_fallback", "evidence": {"arch": arch, "board_name": board_name}}
 
 def _detect_camera() -> Dict[str, Any]:
     """Best-effort camera presence detection.
@@ -103,7 +195,7 @@ def _detect_gpu(*, dry_run: bool) -> Dict[str, Any]:
     return gpu
 
 
-def detect_hardware(dry_run: bool = False) -> Dict[str, Any]:
+def detect_hardware(dry_run: bool = False, *, forced_profile: Optional[str] = None) -> Dict[str, Any]:
     machine = platform.machine()
     arch = normalize_arch(machine)
 
@@ -129,6 +221,9 @@ def detect_hardware(dry_run: bool = False) -> Dict[str, Any]:
     hw["gpu"] = _detect_gpu(dry_run=dry_run)
     hw["camera"] = _detect_camera()
 
+    # Identity signals: used by profile rule engine.
+    hw["identity"] = _detect_identity()
+
     # Disks (best-effort)
     try:
         r = run_cmd(["lsblk", "-J", "-o", "NAME,SIZE,TYPE,RM,TRAN"], check=True, dry_run=dry_run)
@@ -137,13 +232,9 @@ def detect_hardware(dry_run: bool = False) -> Dict[str, Any]:
         # keep going
         pass
 
-    # Minimal default profile selection (real project can evolve rule engine)
-    if arch == "amd64":
-        hw["profile"] = "amd64-pc"
-    elif arch == "arm64":
-        hw["profile"] = "arm64-pi"
-    else:
-        hw["profile"] = "armhf-legacy"
+    profile, why = _pick_profile(hw, forced_profile=forced_profile)
+    hw["profile"] = profile
+    hw["profile_selection"] = why
 
     logger.info("Hardware: arch=%s firmware=%s profile=%s", hw.get("arch"), hw.get("firmware"), hw.get("profile"))
     return hw
