@@ -3,3 +3,13 @@ arch: amd64
 firmware: efi
 packages:
   - linux-image-amd64
+features:
+  # If true, install even if detection is uncertain; still never enable a listener without hardware.
+  lora: false
+  haptics: false
+  sensors: false
+
+  # Auto-gated features (installer decides based on detection + policy).
+  camera: auto
+  ai_ml: auto
+  media: auto

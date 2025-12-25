@@ -5,3 +5,10 @@ packages:
   - linux-image-amd64
 notes:
   - "Default profile compatible"
+features:
+  lora: false
+  haptics: false
+  sensors: false
+  camera: auto
+  ai_ml: auto
+  media: auto

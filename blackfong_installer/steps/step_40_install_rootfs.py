@@ -54,6 +54,7 @@ class InstallRootFSStep:
                     "coreutils",
                     "ca-certificates",
                     "network-manager",
+                    "openssh-server",
                     "sudo",
                     "linux-base",
                     "initramfs-tools",

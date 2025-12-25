@@ -23,15 +23,29 @@ class InstallDesktopStep:
         dry_run = bool(cfg.get("dry_run", False))
 
         # Desktop base selection:
-        # - We run a Debian rootfs today; "xubuntu" here means "Xubuntu-style XFCE desktop".
-        desktop_base = str(cfg.get("desktop_base", "xubuntu")).strip().lower()
+        # - "code-warden" is a terminal-first, control-oriented Wayland stack.
+        # - "xubuntu"/"xfce" is an optional compatibility base.
+        desktop_base = str(cfg.get("desktop_base", "code-warden")).strip().lower()
 
         # Baseline audio/media stack.
         packages: list[str] = ["pipewire", "wireplumber", "gstreamer1.0-tools"]
 
+        with_recommends = False
+
+        # Code Warden: minimal, terminal-first Wayland stack.
+        if desktop_base in {"code-warden", "code_warden", "warden"}:
+            packages += [
+                "sway",
+                "foot",
+                "waybar",
+                "wofi",
+                "xwayland",
+                "network-manager-gnome",
+                "wl-clipboard",
+            ]
+
         # Xubuntu-style base (XFCE + Xorg + display manager).
         # NOTE: On Debian this is provided by task/meta packages (not Ubuntu's xubuntu-desktop).
-        with_recommends = False
         if desktop_base in {"xubuntu", "xfce", "xfce4"}:
             packages += [
                 "task-xfce-desktop",
@@ -41,7 +55,7 @@ class InstallDesktopStep:
             with_recommends = True
 
         # Optional: Blackfong shell (only if repo provides it).
-        blackfong_shell_pkg = str(cfg.get("blackfong_shell_package", "blackfong-bde-shell")).strip()
+        blackfong_shell_pkg = str(cfg.get("blackfong_shell_package", "blackfong-code-warden-shell")).strip()
 
         mount_chroot_binds(target_root, dry_run=dry_run)
         try:

@@ -1,7 +1,7 @@
-# Terminal-first desktop (BDE) stack.
+# Terminal-first desktop: Blackfong's Code Warden.
 packages:
   - pipewire
   - wireplumber
   - gstreamer1.0-tools
-  # Wayland compositor + shell placeholders:
-  - blackfong-bde-shell
+  # Shell placeholder (repo-provided, optional in installer logic):
+  - blackfong-code-warden-shell
