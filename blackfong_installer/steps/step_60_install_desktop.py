@@ -22,37 +22,31 @@ class InstallDesktopStep:
 
         dry_run = bool(cfg.get("dry_run", False))
 
-        # Desktop base:
-        # - OS boots into XFCE ("Xubuntu-style") by default.
-        # - Code Warden is an optional in-OS capability installed alongside XFCE.
-        desktop_base = str(cfg.get("desktop_base", "xubuntu")).strip().lower()
+        # OBEOS v1 ships one desktop doctrine: Kubuntu 24.04 LTS + KDE Plasma.
+        # Legacy XFCE/Xubuntu values are migration inputs only and are rejected here
+        # instead of silently installing the wrong desktop.
+        desktop_base = str(cfg.get("desktop_base", "kubuntu-plasma")).strip().lower()
+        if desktop_base not in {"kubuntu", "kubuntu-plasma", "plasma", "kde-plasma"}:
+            raise RuntimeError(
+                "OBEOS v1 shipping installer requires desktop_base=kubuntu-plasma; "
+                f"got {desktop_base!r}"
+            )
+
         code_warden_enabled = bool(cfg.get("code_warden_enabled", False))
 
-        # Baseline audio/media stack.
-        packages: list[str] = ["pipewire", "wireplumber", "gstreamer1.0-tools"]
+        packages: list[str] = [
+            "kubuntu-desktop",
+            "plasma-workspace",
+            "sddm",
+            "network-manager",
+            "pipewire",
+            "wireplumber",
+            "gstreamer1.0-tools",
+        ]
+        with_recommends = True
 
-        with_recommends = False
-
-        # Xubuntu-style base (XFCE + Xorg + display manager).
-        # NOTE: On Debian this is provided by task/meta packages (not Ubuntu's xubuntu-desktop).
-        if desktop_base in {"xubuntu", "xfce", "xfce4"}:
-            packages += [
-                "task-xfce-desktop",
-                "lightdm",
-                "network-manager-gnome",
-            ]
-            with_recommends = True
-        else:
-            # If someone sets a non-xfce desktop_base today, do not silently install nothing.
-            # Keep behavior honest: install XFCE baseline unless/ until more desktop bases exist.
-            packages += [
-                "task-xfce-desktop",
-                "lightdm",
-                "network-manager-gnome",
-            ]
-            with_recommends = True
-
-        # Code Warden: terminal-first toolset available within the OS.
+        # Code Warden remains an optional developer/operator capability inside Plasma.
+        # It does not replace the shipping desktop/session authority.
         if code_warden_enabled:
             packages += [
                 "sway",
@@ -63,7 +57,6 @@ class InstallDesktopStep:
                 "wl-clipboard",
             ]
 
-        # Optional: Blackfong shell (only if repo provides it).
         blackfong_shell_pkg = str(cfg.get("blackfong_shell_package", "blackfong-code-warden-shell")).strip()
 
         mount_chroot_binds(target_root, dry_run=dry_run)
@@ -75,8 +68,17 @@ class InstallDesktopStep:
         finally:
             umount_chroot_binds(target_root, dry_run=dry_run)
 
+        state.setdefault("platform", {})
+        state["platform"].update(
+            {
+                "desktop": "KDE Plasma",
+                "display_manager": "SDDM",
+                "desktop_base": "kubuntu-plasma",
+                "session_authority": "OBEOS",
+            }
+        )
         logger.info(
-            "Desktop stack installed (desktop_base=%s code_warden_enabled=%s)",
+            "OBEOS Plasma desktop installed (desktop_base=%s code_warden_enabled=%s)",
             desktop_base,
             code_warden_enabled,
         )

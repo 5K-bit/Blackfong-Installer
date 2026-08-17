@@ -1,0 +1,46 @@
+name: Kubuntu Plasma Installer Gate
+
+on:
+  push:
+    branches: [agent/kubuntu-plasma-v1]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -U pip pytest pyyaml
+      - name: Compile installer
+        run: python -m compileall -q blackfong_installer
+      - name: Enforce Noble and Plasma doctrine
+        shell: bash
+        run: |
+          grep -q 'suite: noble' build_config.yaml
+          grep -q 'kubuntu-desktop' blackfong_installer/steps/step_60_install_desktop.py
+          grep -q 'sddm' blackfong_installer/steps/step_60_install_desktop.py
+          if grep -q 'task-xfce-desktop' blackfong_installer/steps/step_60_install_desktop.py; then
+            echo 'XFCE shipping dependency still present'
+            exit 1
+          fi
+      - name: Validate installed-guest acceptance verifier
+        shell: bash
+        run: bash -n tools/verify-installed-obeos.sh
+      - name: Run installer tests if present
+        shell: bash
+        run: |
+          if find . -path '*/test_*.py' -o -path '*/tests/*.py' | grep -q .; then
+            python -m pytest -q
+          else
+            echo 'No installer unit tests present; static gate only.'
+          fi
+      - name: Manual VM gate remains required
+        run: echo 'UEFI/live-media Kubuntu VM acceptance must still be performed before release.'
