@@ -1,51 +1,46 @@
-# Blackfong installer media build configuration
-# This file is read by the build pipeline (blackfong-build).
+# OBEOS installer media build configuration
+# Shipping doctrine: Ubuntu 24.04 LTS (noble) + Kubuntu/KDE Plasma.
 
-version: vNext-1.0
+version: v0.9-rc
 
 targets:
   - amd64
-  - arm64
-  - armhf
 
-# Offline apt repo shipped on the media.
+# Offline apt repo shipped on the media. The repository content must be built
+# against the same Ubuntu suite as the target rootfs; mixing Debian Bookworm
+# packages into an Ubuntu Noble target is not supported.
 offline_repo:
   path: assets/apt-repo
-  # The offline repo is mounted/copied into the live env at this path:
   live_path: /opt/blackfong/apt-repo
   trusted: true
-  suite: bookworm
+  suite: noble
   component: main
 
-# Debian bootstrap settings for the *live environment*
-debian:
-  suite: bookworm
-  mirror: http://deb.debian.org/debian
+ubuntu:
+  suite: noble
+  mirror: http://archive.ubuntu.com/ubuntu
 
-# Per-arch defaults for the live environment
+# Compatibility key retained while older build code is migrated. It must carry
+# the same Ubuntu values; Debian/Bookworm is no longer a shipping configuration.
+debian:
+  suite: noble
+  mirror: http://archive.ubuntu.com/ubuntu
+
 arch:
   amd64:
-    kernel_package: linux-image-amd64
+    kernel_package: linux-generic
     extra_packages:
-      - live-boot
-      - grub-efi-amd64
+      - casper
+      - grub-efi-amd64-bin
+      - grub-efi-amd64-signed
+      - shim-signed
       - efibootmgr
       - squashfs-tools
       - xorriso
-  arm64:
-    kernel_package: linux-image-arm64
-    extra_packages: []
-  armhf:
-    kernel_package: linux-image-armhf
-    extra_packages: []
 
-# Output artifact names
 outputs:
-  amd64_iso: output/blackfong-installer-amd64.iso
-  arm64_img: output/blackfong-installer-arm64.img
-  armhf_img: output/blackfong-installer-armhf.img
+  amd64_iso: output/obeos-installer-amd64.iso
 
-# Build working directories
 paths:
   work_dir: build/work
   logs_dir: logs
