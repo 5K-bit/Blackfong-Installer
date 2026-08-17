@@ -31,6 +31,9 @@ jobs:
             echo 'XFCE shipping dependency still present'
             exit 1
           fi
+      - name: Validate installed-guest acceptance verifier
+        shell: bash
+        run: bash -n tools/verify-installed-obeos.sh
       - name: Run installer tests if present
         shell: bash
         run: |
