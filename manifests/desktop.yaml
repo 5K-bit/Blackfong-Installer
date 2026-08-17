@@ -1,7 +1,12 @@
-# Terminal-first desktop: Blackfong's Code Warden.
+# OBEOS v1 shipping desktop: Kubuntu 24.04 LTS + KDE Plasma.
+# XFCE/Xubuntu is migration input only and must not be installed by the shipping path.
 packages:
+  - kubuntu-desktop
+  - plasma-workspace
+  - sddm
+  - network-manager
   - pipewire
   - wireplumber
   - gstreamer1.0-tools
-  # Shell placeholder (repo-provided, optional in installer logic):
+  # Optional repo-provided Blackfong tooling may be added when available.
   - blackfong-code-warden-shell
