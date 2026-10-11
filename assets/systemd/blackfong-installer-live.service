@@ -1,14 +1,21 @@
 [Unit]
-Description=Blackfong Installer (Live)
-After=network-online.target
+Description=Blackfong Installer (Live wizard on tty1)
+After=network-online.target systemd-user-sessions.service
 Wants=network-online.target
 ConditionPathExists=/etc/blackfong-live
 
 [Service]
-Type=simple
-ExecStart=/usr/bin/python3 -m blackfong_installer --state /var/lib/blackfong-installer/state.json
-Restart=on-failure
-RestartSec=2
+Type=idle
+WorkingDirectory=/opt/blackfong/installer
+Environment=PYTHONPATH=/opt/blackfong/installer
+# Interactive and confirm-gated: nothing is erased until a disk is chosen and typed back.
+ExecStart=/usr/bin/python3 -m blackfong_installer.wizard
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Restart=no
 
 [Install]
 WantedBy=multi-user.target

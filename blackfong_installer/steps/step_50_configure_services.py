@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shlex
 from pathlib import Path
 from typing import Any, Dict
 
@@ -91,6 +92,18 @@ class ConfigureServicesStep:
             except Exception:
                 # user may exist
                 pass
+
+            # Password (hash only; set by the install wizard) + sudo membership.
+            pw_hash = cfg.get("user_password_hash")
+            if pw_hash:
+                chroot_cmd(
+                    target_root,
+                    ["bash", "-lc", f"echo {shlex.quote(username + ':' + str(pw_hash))} | chpasswd -e"],
+                    dry_run=dry_run,
+                )
+            else:
+                logger.warning("No user_password_hash set; %s will have no password (SSH keys only)", username)
+            chroot_cmd(target_root, ["usermod", "-aG", "sudo", username], dry_run=dry_run)
 
             if ssh_enabled and ssh_keys:
                 if not isinstance(ssh_keys, list):

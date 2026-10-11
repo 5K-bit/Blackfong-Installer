@@ -5,6 +5,7 @@ from .step_30_install_kernel import InstallKernelStep
 from .step_35_install_bootloader import InstallBootloaderStep
 from .step_40_install_rootfs import InstallRootFSStep
 from .step_50_configure_services import ConfigureServicesStep
+from .step_52_install_obeos import InstallObeosStep
 from .step_55_apply_assets import ApplyAssetsStep
 from .step_60_install_desktop import InstallDesktopStep
 from .step_70_install_features import InstallFeaturesStep
@@ -19,6 +20,7 @@ __all__ = [
     "InstallBootloaderStep",
     "InstallRootFSStep",
     "ConfigureServicesStep",
+    "InstallObeosStep",
     "ApplyAssetsStep",
     "InstallDesktopStep",
     "InstallFeaturesStep",
