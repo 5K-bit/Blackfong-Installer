@@ -60,6 +60,9 @@ def run_cmd(
         logger.debug("STDERR %s", p.stderr.strip())
 
     if check and p.returncode != 0:
-        raise RuntimeError(f"Command failed ({p.returncode}): {_fmt_argv(argv_list)}\n{p.stderr}")
+        tail = "\n".join((p.stdout or "").strip().splitlines()[-15:])
+        raise RuntimeError(
+            f"Command failed ({p.returncode}): {_fmt_argv(argv_list)}\n{p.stderr}\n--- stdout tail ---\n{tail}"
+        )
 
     return CmdResult(argv=argv_list, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr)
