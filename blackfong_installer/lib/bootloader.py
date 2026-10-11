@@ -18,15 +18,26 @@ def install_grub_efi(
     """Install GRUB for x86_64 EFI targets."""
 
     # Assumes /boot/efi is mounted in target.
+    try:
+        chroot_cmd(
+            target_root,
+            [
+                "grub-install",
+                "--target=x86_64-efi",
+                "--efi-directory=/boot/efi",
+                "--bootloader-id=BlackfongOS",
+                "--recheck",
+            ],
+            dry_run=dry_run,
+        )
+    except RuntimeError as e:
+        # Common in a live-USB chroot (no efivars). The removable install below still boots.
+        logger.warning("NVRAM grub-install failed, relying on removable path: %s", str(e)[:200])
+    # Also install the removable-path loader (/EFI/BOOT/BOOTX64.EFI): chroot installs from a
+    # live USB often cannot write NVRAM, and some firmware ignores custom entries.
     chroot_cmd(
         target_root,
-        [
-            "grub-install",
-            "--target=x86_64-efi",
-            "--efi-directory=/boot/efi",
-            "--bootloader-id=BlackfongOS",
-            "--recheck",
-        ],
+        ["grub-install", "--target=x86_64-efi", "--efi-directory=/boot/efi", "--removable", "--recheck"],
         dry_run=dry_run,
     )
     chroot_cmd(target_root, ["update-grub"], dry_run=dry_run)

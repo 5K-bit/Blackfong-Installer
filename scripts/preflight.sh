@@ -9,6 +9,8 @@ required=(
   dpkg-scanpackages
   apt-ftparchive
   qemu-system-x86_64
+  mformat
+  git
 )
 
 missing=()

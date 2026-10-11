@@ -13,6 +13,7 @@ dependencies = [
 [project.scripts]
 blackfong-installer = "blackfong_installer.main:main"
 blackfong-installer-cli = "ui.cli:main"
+blackfong-install = "blackfong_installer.wizard:main"
 blackfong-build = "blackfong_installer.build:main"
 code-warden = "code_warden.cli:main"
 

@@ -10,6 +10,7 @@ from typing import Any, Dict, Sequence
 from .build_config import BuildConfig
 from .build_state import is_completed, mark_completed
 from .lib.assets import copy_tree
+from .lib.bundle import fetch_bundle
 from .lib.apt_repo import build_file_repo_from_debs
 from .lib.command import run_cmd
 
@@ -88,7 +89,8 @@ def step_00_initialize(*, ctx: BuildCtx, state: Dict[str, Any], force: bool) -> 
 
     offline_repo = Path(ctx.cfg.offline_repo_path)
     if not offline_repo.exists():
-        raise RuntimeError(f"Offline repo path missing: {offline_repo}")
+        # Hybrid media (online mirrors + bundled O.B.E.O.S.) does not need an offline apt repo.
+        logger.warning("Offline repo %s missing; building hybrid (online-only apt) media", offline_repo)
 
     # Clean per-target work dirs
     ctx.work_target_dir.mkdir(parents=True, exist_ok=True)
@@ -145,6 +147,7 @@ def step_01_prepare_live_rootfs(*, ctx: BuildCtx, state: Dict[str, Any], force: 
                 "iproute2",
                 "iputils-ping",
                 "ca-certificates",
+                *ctx.cfg.live_packages,
             ],
             dry_run=ctx.dry_run,
         )
@@ -170,7 +173,19 @@ def step_02_copy_blackfong_assets(*, ctx: BuildCtx, state: Dict[str, Any], force
     if dst.exists() and force and not ctx.dry_run:
         run_cmd(["rm", "-rf", str(dst)], dry_run=ctx.dry_run)
 
-    copy_tree(str(repo_root), str(dst), dry_run=ctx.dry_run)
+    copy_tree(
+        str(repo_root),
+        str(dst),
+        dry_run=ctx.dry_run,
+        ignore=("build", "output", ".git", "logs", "__pycache__"),
+    )
+
+    # Bundle O.B.E.O.S. components onto the media (installed onto the target by step 52).
+    fetch_bundle(
+        ctx.cfg.bundle_repos,
+        rootfs / ctx.cfg.bundle_dest.lstrip("/"),
+        dry_run=ctx.dry_run,
+    )
 
     # Apply system assets (systemd/udev/sudoers)
     copy_tree(str(repo_root / "assets/systemd"), str(rootfs / "etc/systemd/system"), dry_run=ctx.dry_run)
@@ -255,6 +270,11 @@ def step_04_integrate_offline_repo(*, ctx: BuildCtx, state: Dict[str, Any], forc
         return
 
     rootfs = ctx.rootfs_dir
+
+    if not Path(ctx.cfg.offline_repo_path).exists():
+        logger.warning("[%s] no offline repo; skipping %s", ctx.target, step_id)
+        mark_completed(state, target=ctx.target, step_id=step_id)
+        return
 
     # Build a structured APT repo from a flat folder of .deb files.
     built_repo = ctx.work_target_dir / "apt-repo-built"
@@ -392,7 +412,6 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
             [
                 "grub-mkrescue",
                 "--compress=xz",
-                "--efi-directory=EFI",
                 "-o",
                 str(iso_path),
                 str(iso_dir),

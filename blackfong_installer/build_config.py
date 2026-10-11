@@ -38,6 +38,18 @@ class BuildConfig:
         return str(((self.raw.get("offline_repo") or {}).get("component")) or "main")
 
     @property
+    def live_packages(self) -> List[str]:
+        return [str(x) for x in (self.raw.get("live_packages") or [])]
+
+    @property
+    def bundle_dest(self) -> str:
+        return str(((self.raw.get("bundle") or {}).get("dest")) or "/opt/blackfong/bundle")
+
+    @property
+    def bundle_repos(self) -> List[Dict[str, Any]]:
+        return list((self.raw.get("bundle") or {}).get("repos") or [])
+
+    @property
     def debian_suite(self) -> str:
         return str(((self.raw.get("debian") or {}).get("suite")) or "stable")
 

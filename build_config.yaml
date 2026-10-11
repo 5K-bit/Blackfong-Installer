@@ -22,16 +22,45 @@ debian:
   suite: bookworm
   mirror: http://deb.debian.org/debian
 
+# Packages the live (installer) environment needs to run the pipeline.
+# The installer shells out to these, so a live image without them cannot install.
+live_packages:
+  - python3
+  - python3-yaml
+  - debootstrap
+  - gdisk
+  - parted
+  - dosfstools
+  - e2fsprogs
+  - util-linux
+  - dbus
+  - ca-certificates
+  - git
+
+# O.B.E.O.S. components bundled onto the media (cloned at build time, installed
+# into /opt/obeos/venv on the target at install time; needs internet for pip).
+bundle:
+  dest: /opt/blackfong/bundle
+  repos:
+    - {name: O.B.E.O.S, url: https://github.com/5K-bit/O.B.E.O.S.git, pip: blackfong_ecosystem}
+    - {name: 3000, url: https://github.com/5K-bit/3000.git}
+    - {name: Blackforge, url: https://github.com/5K-bit/Blackforge.git}
+    - {name: Earthglass, url: https://github.com/5K-bit/Earthglass.git}
+    - {name: Max-Payne, url: https://github.com/5K-bit/Max-Payne.git}
+    - {name: Night-watch-OS, url: https://github.com/5K-bit/Night-watch-OS.git}
+    - {name: QuietDrop, url: https://github.com/5K-bit/QuietDrop.git}
+    - {name: The-Assistant, url: https://github.com/5K-bit/The-Assistant.git, pip: null}
+    - {name: Blackrelay, url: https://github.com/5K-bit/Blackrelay.git, pip: null}
+    - {name: PYBUS, url: https://github.com/5K-bit/PYBUS.git, pip: null}
+
 # Per-arch defaults for the live environment
 arch:
   amd64:
     kernel_package: linux-image-amd64
     extra_packages:
       - live-boot
-      - grub-efi-amd64
+      - grub-efi-amd64-bin
       - efibootmgr
-      - squashfs-tools
-      - xorriso
   arm64:
     kernel_package: linux-image-arm64
     extra_packages: []
