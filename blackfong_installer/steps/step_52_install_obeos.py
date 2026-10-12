@@ -95,13 +95,21 @@ class InstallObeosStep:
                     exe.setdefault("warnings", []).append({"step": self.step_id, "component": name, "error": str(e)[:300]})
                     logger.warning("pip install failed for %s", name)
 
+            # Only provide `daise` when its backing program exists; otherwise step 55 would
+            # enable a service that crash-loops on every boot.
             launcher = Path(target_root) / "usr/local/bin/daise"
+            have_blackfong = (Path(target_root) / TARGET_VENV.lstrip("/") / "bin/blackfong").exists()
             if dry_run:
                 logger.info("Would write %s", launcher)
-            else:
+            elif have_blackfong:
                 launcher.parent.mkdir(parents=True, exist_ok=True)
                 launcher.write_text(DAISE_LAUNCHER, encoding="utf-8")
                 launcher.chmod(0o755)
+            else:
+                logger.warning("blackfong not installed; skipping daise launcher (service stays disabled)")
+                exe.setdefault("warnings", []).append(
+                    {"step": self.step_id, "reason": "blackfong missing; daise launcher not installed"}
+                )
             for tool in ("blackfong", "3000", "blackforge", "earthglass", "maxpayne", "nightwatch", "quietdrop"):
                 chroot_cmd(
                     target_root,
