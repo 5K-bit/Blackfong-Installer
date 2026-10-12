@@ -32,6 +32,17 @@ class InstallObeosStep:
     step_id = "52_install_obeos"
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        # Optional layer: nothing here may abort the OS install.
+        try:
+            return self._install(state)
+        except Exception as e:
+            logger.warning("O.B.E.O.S. bundle install failed; continuing without it: %s", str(e)[:300])
+            state.setdefault("execution", {}).setdefault("warnings", []).append(
+                {"step": self.step_id, "error": str(e)[:500]}
+            )
+            return state
+
+    def _install(self, state: Dict[str, Any]) -> Dict[str, Any]:
         cfg = state.get("config") or {}
         exe = state.setdefault("execution", {})
         target_root = (exe.get("mounts") or {}).get("target_root")

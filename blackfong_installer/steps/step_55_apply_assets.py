@@ -30,6 +30,11 @@ class ApplyAssetsStep:
         copy_tree(str(assets_dir / "systemd"), f"{target_root}/etc/systemd/system", dry_run=dry_run)
         copy_tree(str(assets_dir / "udev"), f"{target_root}/etc/udev/rules.d", dry_run=dry_run)
         copy_tree(str(assets_dir / "sudoers.d"), f"{target_root}/etc/sudoers.d", dry_run=dry_run)
+        # sudo requires drop-ins to be mode 0440 (it warns/ignores otherwise).
+        if not dry_run:
+            for f in (assets_dir / "sudoers.d").iterdir():
+                if f.is_file():
+                    (Path(target_root) / "etc/sudoers.d" / f.name).chmod(0o440)
 
         mount_chroot_binds(target_root, dry_run=dry_run)
         try:
