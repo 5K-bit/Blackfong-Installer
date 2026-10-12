@@ -21,6 +21,13 @@ TARGET_CONSTRAINTS = "/opt/obeos/constraints.txt"
 # 3000 (OpenCV) coexist in one venv on Python 3.12; override via config.obeos_pip_constraints.
 DEFAULT_CONSTRAINTS = ["numpy<2", "opencv-python<4.12", "opencv-python-headless<4.12"]
 
+# Components whose pins cannot be satisfied alongside the shared venv get their own venv
+# (Night-watch-OS needs pydantic>=2.10; the O.B.E.O.S. core pins pydantic==2.6.4).
+TARGET_ISOLATED_VENVS = "/opt/obeos/venvs"
+# name -> command(s) to expose on PATH (only the component's own commands, not uvicorn etc.)
+DEFAULT_ISOLATED = {"Night-watch-OS": ["nightwatch"]}
+
+
 DAISE_LAUNCHER = """#!/bin/sh
 # Blackfong system-wide DAISE entrypoint (installed by blackfong-installer).
 # Runs the Thoughtglass HUD (O.B.E.O.S. secondary cockpit) bound to localhost.
@@ -87,6 +94,7 @@ class InstallObeosStep:
             # Prefer the build config's repo list when present; else install every bundled dir that is a package.
             names = sorted(p.name for p in bundle.iterdir()) if (bundle.is_dir() and not dry_run) else []
             skip = set(cfg.get("obeos_pip_skip") or ["The-Assistant", "Blackrelay", "PYBUS"])
+            isolated = dict(cfg.get("obeos_isolated_components") or DEFAULT_ISOLATED)
             failed: list[str] = []
             for name in names:
                 if name in skip:
@@ -95,11 +103,26 @@ class InstallObeosStep:
                 if not (bundle / name / "pyproject.toml").exists():
                     continue
                 try:
-                    chroot_cmd(
-                        target_root,
-                        ["bash", "-lc", f"{TARGET_VENV}/bin/pip install -c {TARGET_CONSTRAINTS} {shlex.quote(src)}"],
-                        dry_run=dry_run,
-                    )
+                    if name in isolated:
+                        venv = f"{TARGET_ISOLATED_VENVS}/{name}"
+                        chroot_cmd(target_root, ["python3", "-m", "venv", venv], dry_run=dry_run)
+                        chroot_cmd(
+                            target_root,
+                            ["bash", "-lc", f"{venv}/bin/pip install {shlex.quote(src)}"],
+                            dry_run=dry_run,
+                        )
+                        for tool in isolated[name]:
+                            chroot_cmd(
+                                target_root,
+                                ["bash", "-lc", f"ln -sf {venv}/bin/{shlex.quote(tool)} /usr/local/bin/{shlex.quote(tool)}"],
+                                dry_run=dry_run,
+                            )
+                    else:
+                        chroot_cmd(
+                            target_root,
+                            ["bash", "-lc", f"{TARGET_VENV}/bin/pip install -c {TARGET_CONSTRAINTS} {shlex.quote(src)}"],
+                            dry_run=dry_run,
+                        )
                 except Exception as e:  # keep going; the OS install must not fail on one component
                     failed.append(name)
                     exe.setdefault("warnings", []).append({"step": self.step_id, "component": name, "error": str(e)[:300]})
