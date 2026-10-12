@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 LIVE_BUNDLE = "/opt/blackfong/bundle"
 TARGET_SRC = "/opt/obeos/src"
 TARGET_VENV = "/opt/obeos/venv"
+TARGET_CONSTRAINTS = "/opt/obeos/constraints.txt"
+
+# Version constraints verified to let the O.B.E.O.S. core (chromadb<0.5 needs NumPy 1.x) and
+# 3000 (OpenCV) coexist in one venv on Python 3.12; override via config.obeos_pip_constraints.
+DEFAULT_CONSTRAINTS = ["numpy<2", "opencv-python<4.12", "opencv-python-headless<4.12"]
 
 DAISE_LAUNCHER = """#!/bin/sh
 # Blackfong system-wide DAISE entrypoint (installed by blackfong-installer).
@@ -71,8 +76,13 @@ class InstallObeosStep:
         mount_chroot_binds(target_root, dry_run=dry_run)
         try:
             apt_update(target_root, dry_run=dry_run)
-            apt_install(target_root, ["python3", "python3-venv", "python3-pip", "git", "build-essential"], dry_run=dry_run)
+            apt_install(target_root, ["python3", "python3-venv", "python3-pip", "python3-dev", "git", "build-essential"], dry_run=dry_run)
             chroot_cmd(target_root, ["python3", "-m", "venv", TARGET_VENV], dry_run=dry_run)
+            constraints = cfg.get("obeos_pip_constraints") or DEFAULT_CONSTRAINTS
+            if not dry_run:
+                (Path(target_root) / TARGET_CONSTRAINTS.lstrip("/")).write_text(
+                    "\n".join(constraints) + "\n", encoding="utf-8"
+                )
 
             # Prefer the build config's repo list when present; else install every bundled dir that is a package.
             names = sorted(p.name for p in bundle.iterdir()) if (bundle.is_dir() and not dry_run) else []
@@ -87,7 +97,7 @@ class InstallObeosStep:
                 try:
                     chroot_cmd(
                         target_root,
-                        ["bash", "-lc", f"{TARGET_VENV}/bin/pip install {shlex.quote(src)}"],
+                        ["bash", "-lc", f"{TARGET_VENV}/bin/pip install -c {TARGET_CONSTRAINTS} {shlex.quote(src)}"],
                         dry_run=dry_run,
                     )
                 except Exception as e:  # keep going; the OS install must not fail on one component
