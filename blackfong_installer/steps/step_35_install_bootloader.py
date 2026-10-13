@@ -31,25 +31,23 @@ class InstallBootloaderStep:
 
         dry_run = bool(cfg.get("dry_run", False))
 
-        # Ensure bootloader tooling exists inside target
+        root_uuid = get_uuid(root_part, dry_run=dry_run)
+        state.setdefault("execution", {}).setdefault("decisions", {})["root_uuid"] = root_uuid
+
+        # grub-install/update-grub run inside the chroot and need /dev, /proc and /sys bound
+        # (they resolve the ESP/root device via /proc/mounts), so keep the binds up for all of it.
         mount_chroot_binds(target_root, dry_run=dry_run)
         try:
             apt_update(target_root, dry_run=dry_run)
             if firmware == "efi":
                 apt_install(target_root, ["grub-efi-amd64", "efibootmgr"], dry_run=dry_run)
+                install_grub_efi(target_root=target_root, disk=cfg.get("target_disk", ""), dry_run=dry_run)
             else:
                 # extlinux is typically provided via syslinux-common/extlinux
                 apt_install(target_root, ["extlinux", "syslinux-common"], dry_run=dry_run)
+                write_extlinux_config(target_root=target_root, root_uuid=root_uuid, dry_run=dry_run)
         finally:
             umount_chroot_binds(target_root, dry_run=dry_run)
-
-        root_uuid = get_uuid(root_part, dry_run=dry_run)
-        state.setdefault("execution", {}).setdefault("decisions", {})["root_uuid"] = root_uuid
-
-        if firmware == "efi":
-            install_grub_efi(target_root=target_root, disk=cfg.get("target_disk", ""), dry_run=dry_run)
-        else:
-            write_extlinux_config(target_root=target_root, root_uuid=root_uuid, dry_run=dry_run)
 
         logger.info("Bootloader configured (firmware=%s)", firmware)
         return state

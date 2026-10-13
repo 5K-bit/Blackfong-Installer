@@ -48,36 +48,28 @@ def _rm_rf(path: Path, *, dry_run: bool) -> None:
 
 
 def _verify_amd64_iso_has_efi(*, iso_path: Path, dry_run: bool) -> None:
-    """Fail hard if ISO lacks EFI boot artifacts."""
+    """Fail hard if the ISO has no UEFI El Torito boot image.
+
+    grub-mkrescue embeds the EFI loader in /efi.img (a FAT image referenced by the El Torito
+    catalog), not as an /EFI tree in the ISO9660 filesystem, so check the boot catalog.
+    """
     if dry_run:
         return
     if not iso_path.exists():
         raise RuntimeError(f"ISO missing after build: {iso_path}")
 
-    # Inspect ISO contents without mounting.
-    # We consider it EFI-capable if any .efi file exists under /EFI.
     r = run_cmd(
-        ["xorriso", "-indev", str(iso_path), "-find", "/EFI", "-type", "f", "-name", "*.efi", "-print"],
+        ["xorriso", "-indev", str(iso_path), "-report_el_torito", "plain"],
         check=False,
         dry_run=False,
     )
-    efi_files = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
-    if efi_files:
-        return
-
-    # Fallback: list all files under /EFI and look for BOOTX64.EFI.
-    r2 = run_cmd(
-        ["xorriso", "-indev", str(iso_path), "-find", "/EFI", "-type", "f", "-print"],
-        check=False,
-        dry_run=False,
-    )
-    lines = [ln.strip() for ln in (r2.stdout or "").splitlines() if ln.strip()]
-    if any("BOOTX64.EFI" in ln.upper() for ln in lines):
+    out = (r.stdout or "") + (r.stderr or "")
+    if any(("El Torito boot img" in ln and "UEFI" in ln) for ln in out.splitlines()):
         return
 
     raise RuntimeError(
-        "EFI boot bits missing from ISO (no /EFI/*.efi found). "
-        "grub-mkrescue/xorriso did not emit EFI artifacts."
+        "No UEFI El Torito boot image in ISO (grub-mkrescue/xorriso did not emit EFI boot bits; "
+        "is grub-efi-amd64-bin + mtools installed on the build host?)"
     )
 
 

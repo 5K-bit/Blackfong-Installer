@@ -1,7 +1,8 @@
 [Unit]
 Description=Blackfong Installer (Live wizard on tty1)
-After=network-online.target systemd-user-sessions.service
-Wants=network-online.target
+After=systemd-user-sessions.service getty@tty1.service
+Conflicts=getty@tty1.service
+Wants=network.target
 ConditionPathExists=/etc/blackfong-live
 
 [Service]

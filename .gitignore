@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 build/work/
 output/
+.blackfong-state.json
+.blackfong-installer.log
+build/build_state.json
+logs/*.log

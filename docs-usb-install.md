@@ -31,6 +31,7 @@ hostname / user / password. It installs Debian + XFCE + the O.B.E.O.S. bundle an
 
 Installed system: user from the wizard (sudo), O.B.E.O.S. CLI tools in `/opt/obeos/venv` (symlinked
 into `/usr/local/bin`), `daise.service` runs the Thoughtglass HUD on `127.0.0.1`.
+Night-watch-OS is installed in its own venv (`/opt/obeos/venvs/Night-watch-OS`) because its `pydantic>=2.10` conflicts with the O.B.E.O.S. core's `pydantic==2.6.4`; override with `config.obeos_isolated_components`. The shared venv pins `numpy<2` and `opencv-python<4.12` (`config.obeos_pip_constraints`).
 Failed component installs are listed in the state file (`execution.warnings`) and don't abort the OS install.
 
 ## Known limits
