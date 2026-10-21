@@ -83,6 +83,10 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     # Desktop default:
     # The OS should boot into an XFCE ("Xubuntu-style") desktop by default.
     # Code Warden is an in-OS capability (not a separate OS / not a separate desktop base).
+    # Target Debian release: must match the live image (build_config.yaml debian.suite), not the
+    # moving "stable" alias, so the installed system and the installer's tooling agree.
+    cfg.setdefault("debian_suite", "bookworm")
+    cfg.setdefault("debian_mirror", "http://deb.debian.org/debian")
     cfg.setdefault("desktop_base", "xubuntu")
     cfg.setdefault("code_warden_enabled", True)
     cfg.setdefault("blackfong_shell_package", "blackfong-code-warden-shell")

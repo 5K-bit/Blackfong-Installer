@@ -391,7 +391,7 @@ def step_06_create_artifact(*, ctx: BuildCtx, state: Dict[str, Any], force: bool
             "set timeout=5\n\n"
             "menuentry 'Blackfong Installer (Live)' {\n"
             "  search --set=root --file /live/filesystem.squashfs\n"
-            "  linux /live/vmlinuz boot=live live-media-path=/live quiet\n"
+            "  linux /live/vmlinuz boot=live live-media-path=/live console=tty0 console=ttyS0,115200\n"
             "  initrd /live/initrd\n"
             "}\n"
         )

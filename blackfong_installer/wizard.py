@@ -6,6 +6,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List
 
+from .lib.net import mirror_reachable
 from .main import DEFAULT_STATE_PATH, run
 from .state_store import ensure_defaults, load_state, save_state
 
@@ -40,9 +41,44 @@ def _hash_password(pw: str) -> str:
     ).stdout.strip()
 
 
+def _wifi_setup() -> None:
+    """Interactive Wi-Fi join via NetworkManager (wired normally connects by itself)."""
+    subprocess.run(["nmcli", "device", "wifi", "rescan"], stderr=subprocess.DEVNULL)
+    subprocess.run(["nmcli", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"])
+    ssid = input("Wi-Fi name (SSID): ").strip()
+    if not ssid:
+        return
+    pw = getpass.getpass("Wi-Fi password (blank for open network): ")
+    cmd = ["nmcli", "device", "wifi", "connect", ssid] + (["password", pw] if pw else [])
+    subprocess.run(cmd)
+
+
+def ensure_network(cfg: Dict[str, Any]) -> bool:
+    """The install downloads packages, so verify the mirror is reachable before erasing anything."""
+    mirror, suite = cfg["debian_mirror"], cfg["debian_suite"]
+    while True:
+        print(f"Checking the package mirror ({mirror}) ...")
+        if mirror_reachable(mirror, suite):
+            print("Network OK.\n")
+            return True
+        print("\nCannot reach the package mirror. The install downloads packages, so it needs internet")
+        print("(nothing has been changed on any disk yet).")
+        print("  [r] retry   [w] connect to Wi-Fi   [q] quit")
+        choice = input("> ").strip().lower()
+        if choice == "q":
+            return False
+        if choice == "w":
+            _wifi_setup()
+
+
 def main(argv: list[str] | None = None) -> int:
-    dry = "--dry-run" in (argv or sys.argv[1:])
+    args = argv if argv is not None else sys.argv[1:]
+    dry = "--dry-run" in args
     print("=== Blackfong OS installer (x86_64 UEFI, hybrid: needs internet) ===")
+    cfg = ensure_defaults(load_state(DEFAULT_STATE_PATH))["config"]
+    if not dry and "--skip-network-check" not in args and not ensure_network(cfg):
+        print("Aborted. Nothing was changed.")
+        return 1
     disks = list_disks()
     if not disks:
         print("No installable disks found.")
