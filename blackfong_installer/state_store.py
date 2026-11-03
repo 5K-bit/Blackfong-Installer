@@ -81,13 +81,13 @@ def ensure_defaults(state: Dict[str, Any]) -> Dict[str, Any]:
     cfg.setdefault("partitioning", "auto")
     cfg.setdefault("swap", "auto")
     # Desktop default:
-    # The OS should boot into an XFCE ("Xubuntu-style") desktop by default.
+    # The OS boots into Kubuntu 24.04 LTS + KDE Plasma (SDDM), the O.B.E.O.S. v1 session doctrine.
     # Code Warden is an in-OS capability (not a separate OS / not a separate desktop base).
-    # Target Debian release: must match the live image (build_config.yaml debian.suite), not the
-    # moving "stable" alias, so the installed system and the installer's tooling agree.
-    cfg.setdefault("debian_suite", "bookworm")
-    cfg.setdefault("debian_mirror", "http://deb.debian.org/debian")
-    cfg.setdefault("desktop_base", "xubuntu")
+    # The installed target is Ubuntu noble; the live installer image (build_config.yaml `debian:`)
+    # is separate tooling that only needs to be able to debootstrap it.
+    cfg.setdefault("target_suite", "noble")
+    cfg.setdefault("target_mirror", "http://archive.ubuntu.com/ubuntu")
+    cfg.setdefault("desktop_base", "kubuntu")
     cfg.setdefault("code_warden_enabled", True)
     cfg.setdefault("blackfong_shell_package", "blackfong-code-warden-shell")
 

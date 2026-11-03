@@ -6,7 +6,7 @@
 Provide a unified, hardware-adaptive installer for Blackfong OS targeting **ARM64**, **ARM32 (legacy)**, and **x86_64** systems including Raspberry Pi, uConsole, laptops/PCs, and Steam Deck.
 
 ### Scope
-Supports an **XFCE (“Xubuntu-style”) desktop**, system-wide DAISE, AI/ML tooling, media playback, accessories, and hardware detection **that drives real install decisions**.
+Installs **Kubuntu 24.04 LTS with KDE Plasma (SDDM)**, system-wide DAISE, AI/ML tooling, media playback, accessories, and hardware detection **that drives real install decisions**.
 
 Within the OS, Blackfong also provides **Code Warden** as a terminal-first capability (tools + optional shell), not a separate OS.
 
@@ -108,8 +108,9 @@ Override (hard requirement for edge cases):
 - **DAISE**: Enabled system-wide; no multi-user support.
 - **Single-user**: Created with fixed UID; no other users can be created.
 
-### Step 5 — Desktop Environment (Xubuntu desktop)
-- Default boot target is an **XFCE (“Xubuntu-style”) desktop**.
+### Step 5 — Desktop Environment (Kubuntu / KDE Plasma)
+- The installed system is **Ubuntu 24.04 LTS (noble)** with **`kubuntu-desktop`** (KDE Plasma) and **SDDM**; the boot target is `graphical.target`.
+- XFCE/Xubuntu is **not** part of the O.B.E.O.S. v1 install path: `desktop_base: xfce|xubuntu` is refused with an error rather than silently installing something else.
 - **Code Warden** is available *within the OS* as a terminal-first capability (enabled/disabled via state config), not as a separate desktop base.
 - Multi-monitor layouts deferred to post-installation.
 - Audio/video drivers installed and configured (PipeWire / PulseAudio).
@@ -230,8 +231,10 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - `hostname`, `locale`, `timezone`, `keyboard_layout`
   - `ssh_enabled`: `true|false` (default `true`)
   - `ssh_authorized_keys`: list of SSH public keys to install for deterministic access
-  - `desktop_base`: `xubuntu|xfce` (default `xubuntu`)
-  - `code_warden_enabled`: `true|false` (default `true`) – install Code Warden tools alongside XFCE
+  - `desktop_base`: `kubuntu` (aliases `kde`, `plasma`; default `kubuntu`)
+  - `target_suite`: Ubuntu release to install (default `noble`)
+  - `target_mirror`: apt mirror (default `http://archive.ubuntu.com/ubuntu`; `ports.ubuntu.com` for non-amd64)
+  - `code_warden_enabled`: `true|false` (default `true`) – install Code Warden tools alongside Plasma
 
 - **Hardware profile** (detected):
   - `arch`: `arm64|armhf|amd64`
@@ -271,7 +274,7 @@ All steps read/write a single JSON (or YAML) state file that is also logged for 
   - Install/enable system-wide DAISE and (optionally) device-permission rules
   - Enforce **single-user policy** (fixed UID) and block other user creation
 - **`60_install_desktop`**:
-  - Install XFCE (“Xubuntu-style”) desktop
+  - Install Kubuntu (KDE Plasma + SDDM), preseed SDDM as the display manager, set `graphical.target`
   - Optionally install Code Warden toolset within the OS (terminal-first capability)
   - Configure PipeWire (or PulseAudio where required) and DRM acceleration if supported
 - **`70_install_features`**:

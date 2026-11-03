@@ -2,7 +2,7 @@ id: amd64-pc
 arch: amd64
 firmware: efi
 packages:
-  - linux-image-amd64
+  - linux-image-generic
 features:
   # If true, install even if detection is uncertain; still never enable a listener without hardware.
   lora: false

@@ -1,4 +1,5 @@
-# Terminal-first desktop: Blackfong's Code Warden.
+# Kubuntu 24.04 LTS + KDE Plasma (SDDM) is the session; installed by steps/step_60_install_desktop.py.
+# Code Warden is the in-OS terminal-first capability.
 packages:
   - pipewire
   - wireplumber

@@ -55,7 +55,7 @@ def _wifi_setup() -> None:
 
 def ensure_network(cfg: Dict[str, Any]) -> bool:
     """The install downloads packages, so verify the mirror is reachable before erasing anything."""
-    mirror, suite = cfg["debian_mirror"], cfg["debian_suite"]
+    mirror, suite = cfg["target_mirror"], cfg["target_suite"]
     while True:
         print(f"Checking the package mirror ({mirror}) ...")
         if mirror_reachable(mirror, suite):

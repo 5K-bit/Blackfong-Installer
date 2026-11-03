@@ -28,6 +28,7 @@ live_packages:
   - python3
   - python3-yaml
   - debootstrap
+  - ubuntu-keyring   # lets the Debian live image debootstrap the Ubuntu 24.04 target
   - gdisk
   - parted
   - dosfstools
@@ -53,10 +54,18 @@ bundle:
     - {name: Blackrelay, url: https://github.com/5K-bit/Blackrelay.git, pip: null}
     - {name: PYBUS, url: https://github.com/5K-bit/PYBUS.git, pip: null}
 
+# Installed target (what the wizard installs): Ubuntu 24.04 LTS + Kubuntu Plasma.
+# Defaults live in blackfong_installer/lib/distro.py; override per install via state config
+# keys target_suite / target_mirror / desktop_base.
+target:
+  distro: ubuntu
+  suite: noble
+  desktop: kubuntu
+
 # Per-arch defaults for the live environment
 arch:
   amd64:
-    kernel_package: linux-image-amd64
+    kernel_package: linux-image-amd64   # live installer image (Debian); the installed target uses linux-image-generic
     extra_packages:
       - live-boot
       - grub-efi-amd64-bin

@@ -27,5 +27,23 @@ class PostInstallChecksStep:
             if not p.exists():
                 raise RuntimeError(f"Post-install check failed: missing {p}")
 
-        logger.info("Post-install checks passed (basic)")
+        if not bool((state.get("config") or {}).get("dry_run", False)):
+            self._check_desktop(Path(target_root))
+
+        logger.info("Post-install checks passed")
         return state
+
+    @staticmethod
+    def _check_desktop(root: Path) -> None:
+        """The installed system must be the Kubuntu/Plasma session, not another desktop."""
+        plasma = [root / "usr/bin/startplasma-x11", root / "usr/bin/startplasma-wayland"]
+        if not any(p.exists() for p in plasma):
+            raise RuntimeError("Post-install check failed: KDE Plasma session (startplasma-*) not installed")
+        if not (root / "usr/bin/sddm").exists():
+            raise RuntimeError("Post-install check failed: SDDM display manager not installed")
+        dm = root / "etc/X11/default-display-manager"
+        if dm.exists() and dm.read_text(encoding="utf-8").strip() != "/usr/bin/sddm":
+            raise RuntimeError(f"Post-install check failed: default display manager is {dm.read_text().strip()}, not sddm")
+        for forbidden in ("usr/bin/xfce4-session", "usr/sbin/lightdm"):
+            if (root / forbidden).exists():
+                raise RuntimeError(f"Post-install check failed: {forbidden} present; XFCE is not part of the O.B.E.O.S. v1 path")

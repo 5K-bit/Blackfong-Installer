@@ -1,4 +1,4 @@
-# Build and test the Blackfong USB installer (x86_64 UEFI, XFCE, hybrid)
+# Build and test the Blackfong USB installer (x86_64 UEFI, Kubuntu 24.04 + KDE Plasma, hybrid)
 
 Hybrid = the ISO carries the installer plus a snapshot of the O.B.E.O.S. repos. The machine being
 installed needs **internet during install** (Debian packages via debootstrap, then pip for O.B.E.O.S.).
@@ -38,7 +38,8 @@ Windows: Rufus or balenaEtcher in **DD image mode**.
 Boot the target from the USB (UEFI, Secure Boot off). The wizard (tty1):
 1. checks the package mirror is reachable (retry / join Wi-Fi / quit),
 2. lists disks (the USB itself is hidden) and makes you retype the device name,
-3. asks hostname / user / password, then installs Debian 12 + XFCE + the O.B.E.O.S. bundle and reboots.
+3. asks hostname / user / password, then installs Ubuntu 24.04 LTS + Kubuntu (KDE Plasma, SDDM) + the O.B.E.O.S. bundle and reboots.
+The live installer image itself is still Debian 12 (tooling only); it debootstraps the Ubuntu target (needs `ubuntu-keyring`).
 
 Installed system: your user (sudo, single-user policy), O.B.E.O.S. tools in `/opt/obeos/venv`
 (linked into `/usr/local/bin`), `daise.service` running the Thoughtglass HUD on `127.0.0.1:8080`.
@@ -52,6 +53,9 @@ Build: `logs/blackfong-build.log`. Install: `/var/log/blackfong-installer.log` a
 `/var/lib/blackfong-installer/state.json` in the live system. The live kernel also logs to the serial port.
 
 ## Known limits
-- Verified end to end only on an Ubuntu base (Debian mirrors were blocked where it was tested);
-  Debian package names and the XFCE desktop install are the least-tested parts.
+- Verification level for the Kubuntu/Plasma target (see `tests/` and the PR that introduced it): unit tests in
+  dry-run, plus a real `debootstrap` of Ubuntu noble and a real desktop-step install in a chroot with the
+  post-install check run against it. **Not yet verified:** a full boot of an installed disk (UEFI + SDDM login
+  to a Plasma session) in a VM or on hardware. Do that before treating the installer as shipping-ready.
+- The offline apt repo (`assets/apt-repo`) is not populated in this repository, so installs need internet.
 - Secure Boot unsupported; arm64/armhf image builds are still placeholders.
