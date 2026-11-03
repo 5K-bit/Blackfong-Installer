@@ -3,8 +3,15 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
+from ..lib import distro
 from ..lib.chroot import mount_chroot_binds, umount_chroot_binds
-from ..lib.pkg import apt_install, apt_update, debootstrap_rootfs, write_sources_list_offline
+from ..lib.pkg import (
+    apt_install,
+    apt_update,
+    debootstrap_rootfs,
+    write_sources_list_offline,
+    write_ubuntu_sources,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +34,12 @@ class InstallRootFSStep:
         if not arch:
             raise RuntimeError("hardware.arch missing")
 
-        # Debian debootstrap arch values: amd64, arm64, armhf align with our normalized arch.
-        suite = cfg.get("debian_suite", "stable")
-        mirror = cfg.get("debian_mirror", "http://deb.debian.org/debian")
+        # Target is Ubuntu 24.04 LTS (noble) so the installed desktop is Kubuntu/Plasma.
+        suite = cfg.get("target_suite", distro.TARGET_SUITE)
+        mirror = cfg.get("target_mirror") or distro.default_mirror(arch)
 
         debootstrap_rootfs(target_root=target_root, suite=suite, mirror=mirror, arch=arch, dry_run=dry_run)
+        write_ubuntu_sources(target_root, suite=suite, mirror=mirror, arch=arch, dry_run=dry_run)
 
         # Offline-first: if caller provides an on-media repo path, prefer it.
         offline_repo = cfg.get("offline_repo_path")
@@ -39,7 +47,7 @@ class InstallRootFSStep:
             write_sources_list_offline(
                 target_root,
                 offline_repo,
-                suite=str(cfg.get("offline_repo_suite", "bookworm")),
+                suite=str(cfg.get("offline_repo_suite", suite)),
                 component=str(cfg.get("offline_repo_component", "main")),
             )
 

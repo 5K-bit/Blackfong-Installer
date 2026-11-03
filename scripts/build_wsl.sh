@@ -28,7 +28,7 @@ case "$ROOT" in
 esac
 
 # --- host tools -------------------------------------------------------------
-pkgs=(debootstrap debian-archive-keyring squashfs-tools xorriso grub-efi-amd64-bin grub-pc-bin
+pkgs=(debootstrap debian-archive-keyring ubuntu-keyring squashfs-tools xorriso grub-efi-amd64-bin grub-pc-bin
       mtools dpkg-dev apt-utils qemu-system-x86 git python3-yaml)
 missing=0
 for c in debootstrap mksquashfs xorriso grub-mkrescue mformat dpkg-scanpackages apt-ftparchive git; do
@@ -42,6 +42,11 @@ if [ "$missing" -eq 1 ]; then
 fi
 [ -e /usr/share/debootstrap/scripts/bookworm ] || {
   echo "ERROR: this debootstrap has no 'bookworm' script; update your distro's debootstrap." >&2; exit 1; }
+# The installed target is Ubuntu noble; the generic Ubuntu script (gutsy) is an acceptable fallback.
+[ -e /usr/share/debootstrap/scripts/noble ] || [ -e /usr/share/debootstrap/scripts/gutsy ] || {
+  echo "ERROR: this debootstrap has no Ubuntu script (noble or gutsy); update debootstrap." >&2; exit 1; }
+[ -e /usr/share/keyrings/ubuntu-archive-keyring.gpg ] || {
+  echo "ERROR: ubuntu-keyring is not installed (needed to debootstrap the Ubuntu target)." >&2; exit 1; }
 
 # --- leftover bind mounts from a crashed/interrupted build ---------------------
 # Never delete a tree while /dev, /proc or /sys are still bind-mounted into it.

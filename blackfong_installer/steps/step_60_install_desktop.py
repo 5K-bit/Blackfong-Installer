@@ -3,7 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from ..lib.chroot import mount_chroot_binds, umount_chroot_binds
+from ..lib import distro
+from ..lib.chroot import chroot_cmd, mount_chroot_binds, umount_chroot_binds
+from ..lib.command import run_cmd
 from ..lib.pkg import apt_has_package, apt_install, apt_update
 
 logger = logging.getLogger(__name__)
@@ -22,35 +24,15 @@ class InstallDesktopStep:
 
         dry_run = bool(cfg.get("dry_run", False))
 
-        # Desktop base:
-        # - OS boots into XFCE ("Xubuntu-style") by default.
-        # - Code Warden is an optional in-OS capability installed alongside XFCE.
-        desktop_base = str(cfg.get("desktop_base", "xubuntu")).strip().lower()
+        # Desktop base: Kubuntu 24.04 LTS + KDE Plasma with SDDM (O.B.E.O.S. v1 doctrine).
+        # Unsupported values (including legacy xfce/xubuntu) raise instead of installing
+        # a different desktop than the one that was asked for.
+        desktop_base = distro.normalize_desktop_base(cfg.get("desktop_base", "kubuntu"))
         code_warden_enabled = bool(cfg.get("code_warden_enabled", False))
 
         # Baseline audio/media stack.
         packages: list[str] = ["pipewire", "wireplumber", "gstreamer1.0-tools"]
-
-        with_recommends = False
-
-        # Xubuntu-style base (XFCE + Xorg + display manager).
-        # NOTE: On Debian this is provided by task/meta packages (not Ubuntu's xubuntu-desktop).
-        if desktop_base in {"xubuntu", "xfce", "xfce4"}:
-            packages += [
-                "task-xfce-desktop",
-                "lightdm",
-                "network-manager-gnome",
-            ]
-            with_recommends = True
-        else:
-            # If someone sets a non-xfce desktop_base today, do not silently install nothing.
-            # Keep behavior honest: install XFCE baseline unless/ until more desktop bases exist.
-            packages += [
-                "task-xfce-desktop",
-                "lightdm",
-                "network-manager-gnome",
-            ]
-            with_recommends = True
+        packages += list(distro.KUBUNTU_PACKAGES)
 
         # Code Warden: terminal-first toolset available within the OS.
         if code_warden_enabled:
@@ -69,9 +51,17 @@ class InstallDesktopStep:
         mount_chroot_binds(target_root, dry_run=dry_run)
         try:
             apt_update(target_root, dry_run=dry_run)
+            # Make SDDM the display manager without an interactive debconf prompt.
+            run_cmd(
+                ["chroot", target_root, "debconf-set-selections"],
+                input_text=distro.DEBCONF_DISPLAY_MANAGER,
+                dry_run=dry_run,
+            )
             if blackfong_shell_pkg and apt_has_package(target_root, blackfong_shell_pkg, dry_run=dry_run):
                 packages.append(blackfong_shell_pkg)
-            apt_install(target_root, packages, with_recommends=with_recommends, dry_run=dry_run)
+            # Recommends stay on: Kubuntu's session depends on them (themes, settings modules).
+            apt_install(target_root, packages, with_recommends=True, dry_run=dry_run)
+            chroot_cmd(target_root, ["systemctl", "set-default", "graphical.target"], dry_run=dry_run)
         finally:
             umount_chroot_binds(target_root, dry_run=dry_run)
 

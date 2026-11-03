@@ -3,17 +3,15 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
+from ..lib import distro
 from ..lib.chroot import mount_chroot_binds, umount_chroot_binds
 from ..lib.pkg import apt_install, apt_update
 
 logger = logging.getLogger(__name__)
 
 
-KERNEL_BY_ARCH = {
-    "arm64": "linux-image-arm64",
-    "armhf": "linux-image-armhf",
-    "amd64": "linux-image-amd64",
-}
+# Ubuntu kernel metapackage (see lib/distro.py); Debian's linux-image-amd64 does not exist on Ubuntu.
+KERNEL_BY_ARCH = distro.KERNEL_BY_ARCH
 
 
 class InstallKernelStep:
@@ -32,9 +30,7 @@ class InstallKernelStep:
         if not arch:
             raise RuntimeError("hardware.arch is missing")
 
-        kernel_pkg = KERNEL_BY_ARCH.get(arch)
-        if not kernel_pkg:
-            raise RuntimeError(f"Unsupported arch for kernel selection: {arch}")
+        kernel_pkg = distro.kernel_package(arch)
 
         state.setdefault("execution", {}).setdefault("decisions", {})["kernel_package"] = kernel_pkg
 
